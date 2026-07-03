@@ -1,0 +1,124 @@
+package tree;
+
+import java.util.Comparator;
+import java.util.function.Function;
+
+import node.AVLNode;
+
+public class StdAVLTree<N extends AVLNode<N, T>, T> extends StdBSTTree<N, T> implements BSTTree<N, T> {
+
+	// CONSTRUCTEURS
+	
+	public StdAVLTree(Comparator<T> c, Function<T, N> f) {
+		super(c, f);
+	}
+	
+	public StdAVLTree(Comparator<T> c, Function<T, N> f,N n) {
+		super(c, f,n);
+	}
+
+	// COMMANDES
+	@Override
+	public void add(T x) {
+		this.setRoot(addValueAVL(x,getRoot()));
+	}
+	
+	public void delete(T x) {
+		this.setRoot(deleteValueAVL(x,getRoot()));
+	}
+	
+	// OUTILS
+	
+	private N addValueAVL(T value, N node) {
+	    if(node == null) {
+	        return factory.apply(value);
+	    }
+	    int c = comparator.compare(value, node.getValue());
+	    if(c == 0) {
+	        return node;
+	    }
+	    if(c < 0) {
+	        node.setLeft(addValueAVL(value, node.getLeft()));
+	    } else {
+	        node.setRight(addValueAVL(value, node.getRight()));
+	    }
+	    updateHeight(node);
+	    return rebalance(node);
+	}
+	
+	
+	private void updateHeight(N n) {
+		n.setHeight(1 + Math.max(height(n.getLeft()), height(n.getRight())));
+	}
+	
+	private int height(N n) {
+		if(n == null) {
+			return 0;
+		}
+		return n.getHeight();
+	}
+	
+	
+	
+	
+	private N deleteValueAVL(T value, N node) {
+		if (node == null) return null;
+		int c = getComparator().compare(value, node.getValue());
+		if (c < 0) {
+			node.setLeft(deleteValueAVL(value, node.getLeft()));
+		} else if (c > 0) {
+			node.setRight(deleteValueAVL(value, node.getRight()));
+		} else {
+			if (node.getLeft() == null) return node.getRight();
+			if (node.getRight() == null) return node.getLeft();
+			N successor = min(node.getRight());
+			node.setValue(successor.getValue());
+			node.setRight(deleteValueAVL(successor.getValue(), node.getRight()));
+		}
+		updateHeight(node);
+		return rebalance(node);
+	}
+	
+	private N min(N node) {
+		return node.getLeft() == null ? node : min(node.getLeft());
+	}
+	
+	private int balanceFactor(N node) {
+		return node == null ? 0 : height(node.getLeft()) - height(node.getRight());
+	}
+	
+	private N rebalance(N node) {
+		int bf = balanceFactor(node);
+		if (bf > 1) {
+			if (balanceFactor(node.getLeft()) < 0) {
+				node.setLeft(rotateLeft(node.getLeft()));
+			}
+			return rotateRight(node);
+		}
+		if (bf < -1) {
+			if (balanceFactor(node.getRight()) > 0) {
+				node.setRight(rotateRight(node.getRight()));
+			}
+			return rotateLeft(node);
+		}
+		return node;
+	}
+
+	private N rotateRight(N node) {
+		N pivot = node.getLeft();
+		node.setLeft(pivot.getRight());
+		pivot.setRight(node);
+		updateHeight(node);
+		updateHeight(pivot);
+		return pivot;
+	}
+
+	private N rotateLeft(N node) {
+		N pivot = node.getRight();
+		node.setRight(pivot.getLeft());
+		pivot.setLeft(node);
+		updateHeight(node);
+		updateHeight(pivot);
+		return pivot;
+	}
+}
