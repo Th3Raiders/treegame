@@ -1,0 +1,158 @@
+package binarytree;
+
+import java.awt.Color;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.awt.event.MouseWheelEvent;
+import java.awt.geom.Point2D;
+import java.util.Comparator;
+import java.util.IdentityHashMap;
+import java.util.Map;
+
+import javax.swing.JPanel;
+
+import node.StdValuedNode;
+import tree.BSTTree;
+import tree.StdBSTTree;
+
+public class BSTPanel extends JPanel {
+
+	// ATTRIBUTS
+	
+	private static final int NODE_DIAMETER = 30;
+	private static final int VERTICAL_GAP = 60;
+	private static final int HORIZONTAL_GAP = 40;
+	
+	
+	private double scale = 1.0;
+	private double offsetX = 0;
+	private double offsetY = 0;
+	
+	private int lastMouseX;
+	private int lastMouseY;
+	
+	private BSTTree<StdValuedNode<Integer>, Integer> model = new StdBSTTree<StdValuedNode<Integer>, Integer>(Comparator.naturalOrder(),StdValuedNode::new);
+	
+	
+	
+	private final Map<StdValuedNode<Integer>, Point2D.Double> positions = new IdentityHashMap<>();
+	
+	
+	// CONSTRUCTEURS
+	public BSTPanel() {
+		setupNavigation();
+	}
+	
+	
+	
+	// COMMANDES
+	
+	
+	public void addInt(Integer i) {
+		model.add(i);
+		repaint();
+	}
+	
+	public void deleteInt(Integer i) {
+		model.delete(i);
+		repaint();
+	}
+	
+	public boolean searchInt(Integer i) {
+		return model.isIn(i);
+	}
+	
+	
+	@Override
+	protected void paintComponent(Graphics g) {
+		super.paintComponent(g);
+		Graphics2D g2 = (Graphics2D) g;
+
+		g2.translate(offsetX, offsetY);
+		g2.scale(scale, scale);
+
+		StdValuedNode<Integer> root = model.getRoot();
+		if (root != null) {
+			drawNode(g2, root, getWidth() / 2, 40, getWidth() / 4);
+		}
+	}
+
+	
+	
+	
+
+	private void drawNode(Graphics g, StdValuedNode<Integer> node, int x, int y, int xOffset) {
+		if (node.getLeft() != null) {
+			int childX = x - xOffset;
+			int childY = y + VERTICAL_GAP;
+			g.drawLine(x, y, childX, childY);
+			drawNode(g, node.getLeft(), childX, childY, Math.max(xOffset / 2, 20));
+		}
+		if (node.getRight() != null) {
+			int childX = x + xOffset;
+			int childY = y + VERTICAL_GAP;
+			g.drawLine(x, y, childX, childY);
+			drawNode(g, node.getRight(), childX, childY, Math.max(xOffset / 2, 20));
+		}
+
+		g.setColor(Color.WHITE);
+		g.fillOval(x - NODE_DIAMETER / 2, y - NODE_DIAMETER / 2, NODE_DIAMETER, NODE_DIAMETER);
+		g.setColor(Color.BLACK);
+		g.drawOval(x - NODE_DIAMETER / 2, y - NODE_DIAMETER / 2, NODE_DIAMETER, NODE_DIAMETER);
+
+		String s = String.valueOf(node.getValue());
+		FontMetrics fm = g.getFontMetrics();
+		int strWidth = fm.stringWidth(s);
+		g.drawString(s, x - strWidth / 2, y + fm.getAscent() / 2 - 2);
+	}
+	
+	private void setupNavigation() {
+		addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				lastMouseX = e.getX();
+				lastMouseY = e.getY();
+			}
+		});
+		
+		addMouseMotionListener(new MouseMotionAdapter() {
+			@Override
+			public void mouseDragged(MouseEvent e) {
+				offsetX += e.getX() - lastMouseX;
+				offsetY += e.getY() - lastMouseY;
+				
+				lastMouseX = e.getX();
+				lastMouseY = e.getY();
+				
+				repaint();
+			}
+		});
+		
+		addMouseWheelListener(this::handleZoom);
+	}
+	
+	
+	private void handleZoom(MouseWheelEvent e) {
+		double zoomFactor = (e.getWheelRotation() < 0) ? 1.1 : 0.9;
+
+		double mouseX = e.getX();
+		double mouseY = e.getY();
+
+		offsetX = mouseX - (mouseX - offsetX) * zoomFactor;
+		offsetY = mouseY - (mouseY - offsetY) * zoomFactor;
+		scale *= zoomFactor;
+
+		repaint();
+	}
+	
+	public void resetView() {
+		scale = 1.0;
+		offsetX = 0;
+		offsetY = 0;
+		repaint();
+	}
+}

@@ -1,0 +1,45 @@
+/*
+ * Modélise le noeud d'un arbre binaire, aucune valeur ne lui est associé.
+ *  * @cons <pre>
+ *     $DESC$ Un noeud n'ayant pas de sous arbre gauche ni droit.
+ *     $ARGS$ -
+ *     $POST$ getLeft() == null
+ *     		  getRight() == null </pre>
+ */
+
+
+package node;
+
+public interface Node<N extends Node<N>> {
+	
+	
+    // REQUETES
+    
+    /**
+     * Le sous arbre gauche.
+     */
+	public N getLeft();
+	
+	
+    /**
+     * Le sous arbre droit.
+     */
+	public N getRight();
+	
+	// COMMANDES
+	
+	
+    /**
+     * Remplace le sous arbre gauche actuelle par n.
+     *  @post <pre>
+     *     getValue() == v </pre>
+     */
+	public void setLeft(N n);
+	
+    /**
+     * Remplace le sous arbre droit actuelle par n.
+     *  @post <pre>
+     *     getValue() == v </pre>
+     */
+	public void setRight(N n);
+}

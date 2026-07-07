@@ -1,0 +1,5 @@
+package tree;
+
+public class StdAVLTree extends StdBSTTree<N, T> implements BSTTree<N, T> {
+
+}

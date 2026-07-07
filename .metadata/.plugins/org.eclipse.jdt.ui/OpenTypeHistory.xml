@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<typeInfoHistroy>
+    <typeInfo handle="=bt/src&lt;bt{StdBinaryTree.java[StdBinaryTree" modifiers="1" timestamp="1776690080782"/>
+    <typeInfo handle="=bt/src&lt;bt{BinaryTree.java[BinaryTree" modifiers="513" timestamp="1773785990432"/>
+    <typeInfo handle="=bt/src&lt;bt{StdValuedTree.java[StdValuedTree" modifiers="1" timestamp="1775033384824"/>
+    <typeInfo handle="=bt/src&lt;bst{BinarySearchTree.java[BinarySearchTree" modifiers="513" timestamp="1773572633914"/>
+    <typeInfo handle="=binarytree/src&lt;tree{Tree.java[Tree" modifiers="513" timestamp="1783000626112"/>
+    <typeInfo handle="=binarytree/src&lt;tree{StdTree.java[StdTree" modifiers="1" timestamp="1782918970237"/>
+    <typeInfo handle="=binarytree/src&lt;node{ValuedNode.java[ValuedNode" modifiers="513" timestamp="1782998660107"/>
+    <typeInfo handle="=binarytree/src&lt;node{AVLNode.java[AVLNode" modifiers="513" timestamp="1783020361966"/>
+    <typeInfo handle="=binarytree/src&lt;tree{StdBSTTree.java[StdBSTTree" modifiers="1" timestamp="1783018824468"/>
+    <typeInfo handle="=binarytree/src&lt;tree{BSTTree.java[BSTTree" modifiers="513" timestamp="1783001720810"/>
+    <typeInfo handle="=binarytree/\/usr\/lib\/jvm\/java-21-openjdk-amd64\/lib\/jrt-fs.jar`java.desktop=/javadoc_location=/https:\/\/docs.oracle.com\/en\/java\/javase\/21\/docs\/api\/=/=/module=/true=/&lt;javax.swing(JPanel.class[JPanel" modifiers="33" timestamp="1777196003000"/>
+    <typeInfo handle="=binarytree/\/usr\/lib\/jvm\/java-21-openjdk-amd64\/lib\/jrt-fs.jar`java.desktop=/javadoc_location=/https:\/\/docs.oracle.com\/en\/java\/javase\/21\/docs\/api\/=/=/module=/true=/&lt;javax.swing(JButton.class[JButton" modifiers="33" timestamp="1777196003000"/>
+    <typeInfo handle="=binarytree/\/usr\/lib\/jvm\/java-21-openjdk-amd64\/lib\/jrt-fs.jar`java.desktop=/javadoc_location=/https:\/\/docs.oracle.com\/en\/java\/javase\/21\/docs\/api\/=/=/module=/true=/&lt;javax.swing(JTabbedPane.class[JTabbedPane" modifiers="33" timestamp="1777196003000"/>
+    <typeInfo handle="=binarytree/\/usr\/lib\/jvm\/java-21-openjdk-amd64\/lib\/jrt-fs.jar`java.desktop=/javadoc_location=/https:\/\/docs.oracle.com\/en\/java\/javase\/21\/docs\/api\/=/=/module=/true=/&lt;javax.swing(JCheckBox.class[JCheckBox" modifiers="33" timestamp="1777196003000"/>
+</typeInfoHistroy>

@@ -1,0 +1,78 @@
+package binarytree;
+
+public class StdTree implements Tree {
+
+	// ATTRIBUTS
+	
+	private Node root;
+	
+	// CONSTRUCTEURS
+	
+	public StdTree() {
+		this.root = null;
+	}
+	
+	public StdTree(Node n) {
+		this.root = n;
+	}
+	
+	
+	// REQUETES
+	
+	@Override
+	public Node getRoot() {
+		return this.root;
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return this.root == null;
+	}
+	
+	@Override
+	public int getSize() {
+		return getSizeAux(getRoot());
+	}
+
+	@Override
+	public int getHeight() {
+		return getHeightAux(getRoot());
+	}
+
+	@Override
+	public int getDistance() {
+		return getDistanceAux(getRoot());
+	}
+
+	// COMMANDES
+	
+	@Override
+	public void setRoot(Node n) {
+		this.root = n;
+	}
+	
+	
+	// OUTILS
+	
+	public int getSizeAux(Node n) {
+		if(n == null) {
+			return 0;
+		}
+		return 1 + getSizeAux(n.getLeft()) + getSizeAux(n.getRight());
+	}
+	
+	public int getHeightAux(Node n) {
+		if(n == null) {
+			return 0;
+		}
+		return 1 + Math.max(getHeightAux(n.getLeft()), getHeightAux(n.getRight()));
+	}
+	
+	public int getDistanceAux(Node n) {
+		if(n == null) {
+			return 0;
+		}
+		return 1 + Math.max(getDistanceAux(n.getLeft()), getDistanceAux(n.getRight()));
+	}
+	
+}

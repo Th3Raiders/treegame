@@ -1,0 +1,67 @@
+package utils;
+
+import javax.swing.JTabbedPane;
+
+import java.awt.Color;
+import java.awt.Font;
+
+import javax.swing.JTabbedPane;
+import javax.swing.UIManager;
+import javax.swing.plaf.basic.BasicTabbedPaneUI;
+
+public class StyledTabbedPane extends JTabbedPane {
+
+	private static final Color SELECTED_COLOR = new Color(66, 133, 244);
+	private static final Color UNSELECTED_COLOR = new Color(230, 230, 235);
+	private static final Color TEXT_COLOR_SELECTED = Color.WHITE;
+	private static final Color TEXT_COLOR_UNSELECTED = new Color(80, 80, 80);
+	private static final Font TAB_FONT = new Font("Segoe UI", Font.PLAIN, 14);
+
+	public StyledTabbedPane() {
+		super();
+		setFont(TAB_FONT);
+		setBackground(UNSELECTED_COLOR);
+		setForeground(TEXT_COLOR_UNSELECTED);
+
+		setUI(new BasicTabbedPaneUI() {
+			@Override
+			protected void installDefaults() {
+				super.installDefaults();
+				lightHighlight = SELECTED_COLOR;
+				shadow = UNSELECTED_COLOR;
+				darkShadow = UNSELECTED_COLOR;
+				focus = SELECTED_COLOR;
+				tabInsets.set(10, 20, 10, 20);   // marges internes des onglets
+				contentBorderInsets.set(0, 0, 0, 0);
+			}
+
+			@Override
+			protected void paintTabBackground(java.awt.Graphics g, int tabPlacement,
+					int tabIndex, int x, int y, int w, int h, boolean isSelected) {
+				g.setColor(isSelected ? SELECTED_COLOR : UNSELECTED_COLOR);
+				g.fillRect(x, y, w, h);
+			}
+
+			@Override
+			protected void paintText(java.awt.Graphics g, int tabPlacement,
+					Font font, java.awt.FontMetrics metrics, int tabIndex,
+					String title, java.awt.Rectangle textRect, boolean isSelected) {
+				g.setFont(font);
+				g.setColor(isSelected ? TEXT_COLOR_SELECTED : TEXT_COLOR_UNSELECTED);
+				g.drawString(title, textRect.x, textRect.y + metrics.getAscent());
+			}
+
+			@Override
+			protected int getTabLabelShiftY(int tabPlacement, int tabIndex, boolean isSelected) {
+				return 0;
+			}
+
+			@Override
+			protected void paintFocusIndicator(java.awt.Graphics g, int tabPlacement,
+					java.awt.Rectangle[] rects, int tabIndex,
+					java.awt.Rectangle iconRect, java.awt.Rectangle textRect, boolean isSelected) {
+				// volontairement vide : supprime le rectangle pointillé de focus
+			}
+		});
+	}
+}

@@ -1,0 +1,7 @@
+package node;
+
+public abstract class AbstractValuedNode<N extends ValuedNode<N, T>, T> implements ValuedNode<N, T> {
+	
+	
+	
+}

@@ -1,0 +1,7 @@
+package utils;
+
+import javax.swing.JCheckBox;
+
+public class StyledCheckBox extends JCheckBox {
+
+}

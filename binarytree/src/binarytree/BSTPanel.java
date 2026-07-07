@@ -1,363 +1,346 @@
 package binarytree;
 
-import java.awt.Color;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
-import java.awt.event.MouseWheelEvent;
-import java.awt.geom.Point2D;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
 
-import javax.swing.JPanel;
 import javax.swing.Timer;
 
 import node.StdValuedNode;
-import tree.BSTTree;
 import tree.StdBSTTree;
 
-public class BSTPanel extends JPanel {
+public class BSTPanel extends AbstractTreePanel<StdValuedNode<Integer>> {
 
-	// ATTRIBUTS
-	
-	private static final int NODE_DIAMETER = 30;
-	private static final int VERTICAL_GAP = 60;
-	private static final int HORIZONTAL_GAP = 40;
-	
-	
-	private double scale = 1.0;
-	private double offsetX = 0;
-	private double offsetY = 0;
-	
-	private int lastMouseX;
-	private int lastMouseY;
-	
-	private BSTTree<StdValuedNode<Integer>, Integer> model = new StdBSTTree<StdValuedNode<Integer>, Integer>(Comparator.naturalOrder(),StdValuedNode::new);
-	
-	
-	
-	private final Map<StdValuedNode<Integer>, Point2D.Double> positions = new IdentityHashMap<>();
-	private int inorderCounter; 
-	
-	
-	private boolean animationMode = false;       // NOUVEAU
-    private Integer highlightedValue = null;     // NOUVEAU
-	
-    private Integer replacementValue = null;
-    
-    
-    
-    
-    private boolean stepMode = false;                    // NOUVEAU
-    private List<Integer> pendingPath = null;             // NOUVEAU : chemin restant à parcourir
-    private int pendingIndex = 0;                          // NOUVEAU : où on en est
-    private Runnable pendingFinalAction = null;            // NOUVEAU : action à exécuter à la fin (ex: suppression réelle)
-    
-	// CONSTRUCTEURS
+	private List<Integer> pendingPath = null;
+	private int pendingIndex = 0;
+	private Runnable pendingFinalAction = null;
+	private Runnable pendingOnFinished = null;
+
 	public BSTPanel() {
-		setupNavigation();
-		setBackground();
+		super();
+		model = new StdBSTTree<StdValuedNode<Integer>, Integer>(Comparator.naturalOrder(), StdValuedNode::new);
 	}
-	
-	
-	// REQUETES
-	
-	public BSTTree<StdValuedNode<Integer>, Integer> getModel() {
-		return model;
+
+	@Override
+	public boolean isAnimating() {
+		return pendingPath != null;
 	}
-	
+
 	// COMMANDES
-	
+
 	public void addInt(Integer i) {
-	    if (!animationMode) {
-	        model.add(i);
-	        repaint();
-	        return;
-	    }
-	    List<Integer> path = computeSearchPath(i);
-	    model.add(i);
-	    if (stepMode) {                          // NOUVEAU
-	        startStepAnimation(path, null);      // NOUVEAU
-	    } else {
-	        animatePath(path);
-	    }
+		addInt(i, null);
+	}
+
+	public void addInt(Integer i, Runnable onFinished) {
+		if (busy) {
+			return;
+		}
+		if (!animationMode) {
+			model.add(i);
+			repaint();
+			if (onFinished != null) {
+				onFinished.run();
+			}
+			return;
+		}
+		busy = true;
+		List<Integer> path = computeSearchPath(i);
+		model.add(i);
+		if (stepMode) {
+			startStepAnimation(path, null, onFinished);
+		} else {
+			animatePath(path, onFinished);
+		}
 	}
 
 	public void deleteInt(Integer i) {
-	    if (!animationMode) {
-	        model.delete(i);
-	        repaint();
-	        return;
-	    }
-	    if (!model.isIn(i)) {
-	        return;
-	    }
-	    List<Integer> path = computeDeletePath(i);
-	    if (stepMode) {                                          // NOUVEAU
-	        startStepAnimation(path, () -> model.delete(i));     // NOUVEAU : la suppression réelle est différée
-	    } else {
-	        animateThenDelete(path, i);
-	    }
-	}
-	
-	// NOUVEAU
-	private void startStepAnimation(List<Integer> path, Runnable finalAction) {
-	    pendingPath = path;
-	    pendingIndex = 0;
-	    pendingFinalAction = finalAction;
-	    highlightedValue = null;
-	    repaint();
+		deleteInt(i, null);
 	}
 
-	// NOUVEAU : appelée par le bouton "Suivant"
-	public void nextStep() {
-	    if (pendingPath == null) {
-	        return;
-	    }
-	    if (pendingIndex < pendingPath.size()) {
-	        highlightedValue = pendingPath.get(pendingIndex);
-	        pendingIndex++;
-	        repaint();
-	    } else {
-	        // chemin terminé : on finalise (suppression réelle si besoin) puis on nettoie
-	        highlightedValue = null;
-	        replacementValue = null;
-	        if (pendingFinalAction != null) {
-	            pendingFinalAction.run();
-	        }
-	        pendingPath = null;
-	        pendingFinalAction = null;
-	        repaint();
-	    }
-	}
-
-	// NOUVEAU : pour que Treegame sache s'il faut activer/désactiver le bouton "Suivant"
-	public boolean isAnimating() {
-	    return pendingPath != null;
-	}
-
-	// NOUVEAU
-	public void setStepMode(boolean enabled) {
-	    this.stepMode = enabled;
-	}
-	
-	// NOUVEAU : remplace animatePath pour ce cas précis
-	private void animateThenDelete(List<Integer> path, int valueToDelete) {
-	    final int[] index = {0};
-	    Timer timer = new Timer(500, null);
-	    timer.addActionListener(e -> {
-	        if (index[0] < path.size()) {
-	            highlightedValue = path.get(index[0]);
-	            repaint();
-	            index[0]++;
-	        } else {
-	            timer.stop();
-	            highlightedValue = null;
-	            replacementValue = null; // NOUVEAU
-	            model.delete(valueToDelete);
-	            repaint();
-	        }
-	    });
-	    timer.start();
-	}
-	
-	public boolean searchInt(Integer i) {
-		return model.isIn(i);
-	}
-	
-	
-	@Override
-	protected void paintComponent(Graphics g) {
-		super.paintComponent(g);
-		Graphics2D g2 = (Graphics2D) g;
-		g2.translate(offsetX, offsetY);
-		g2.scale(scale, scale);
-
-		StdValuedNode<Integer> root = model.getRoot();
-		if (root != null) {
-			positions.clear();          // NOUVEAU
-			inorderCounter = 0;         // NOUVEAU
-			computeLayout(root, 0);     // NOUVEAU : calcule toutes les positions d'abord
-			drawTree(g2, root);         // MODIFIÉ : dessine à partir des positions calculées
-		}
-	}
-
-	
-	private void computeLayout(StdValuedNode<Integer> node, int depth) {
-		if (node == null) {
+	public void deleteInt(Integer i, Runnable onFinished) {
+		if (busy) {
 			return;
 		}
-		computeLayout(node.getLeft(), depth + 1);
-
-		double x = inorderCounter * HORIZONTAL_GAP + 40;
-		double y = depth * VERTICAL_GAP + 40;
-		positions.put(node, new Point2D.Double(x, y));
-		inorderCounter++;
-
-		computeLayout(node.getRight(), depth + 1);
-	}
-	
-	// MODIFIÉ : ne calcule plus de position, se contente de lire la map
-	private void drawTree(Graphics g, StdValuedNode<Integer> node) {
-	    Point2D.Double p = positions.get(node);
-
-	    if (node.getLeft() != null) {
-	        Point2D.Double childP = positions.get(node.getLeft());
-	        g.drawLine((int) p.x, (int) p.y, (int) childP.x, (int) childP.y);
-	        drawTree(g, node.getLeft());
-	    }
-	    if (node.getRight() != null) {
-	        Point2D.Double childP = positions.get(node.getRight());
-	        g.drawLine((int) p.x, (int) p.y, (int) childP.x, (int) childP.y);
-	        drawTree(g, node.getRight());
-	    }
-
-	    String s = String.valueOf(node.getValue());
-        FontMetrics fm = g.getFontMetrics();
-        int strWidth = fm.stringWidth(s);
-        int diameter = Math.max(NODE_DIAMETER, strWidth + 16);
-
-        // MODIFIÉ : couleur du cercle conditionnelle
-        if (replacementValue != null && replacementValue.equals(node.getValue())) {
-            g.setColor(Color.GREEN);
-        } else if (highlightedValue != null && highlightedValue.equals(node.getValue())) {
-            g.setColor(Color.RED);
-        } else {
-            g.setColor(Color.WHITE);
-        }
-        g.fillOval((int) p.x - diameter / 2, (int) p.y - diameter / 2, diameter, diameter);
-        g.setColor(Color.BLACK);
-        g.drawOval((int) p.x - diameter / 2, (int) p.y - diameter / 2, diameter, diameter);
-
-        g.drawString(s, (int) p.x - strWidth / 2, (int) p.y + fm.getAscent() / 2 - 2);
-	}
-	
-	
-	private void setupNavigation() {
-		addMouseListener(new MouseAdapter() {
-			@Override
-			public void mousePressed(MouseEvent e) {
-				lastMouseX = e.getX();
-				lastMouseY = e.getY();
+		if (!animationMode) {
+			model.delete(i);
+			repaint();
+			if (onFinished != null) {
+				onFinished.run();
 			}
-		});
-		
-		addMouseMotionListener(new MouseMotionAdapter() {
-			@Override
-			public void mouseDragged(MouseEvent e) {
-				offsetX += e.getX() - lastMouseX;
-				offsetY += e.getY() - lastMouseY;
-				
-				lastMouseX = e.getX();
-				lastMouseY = e.getY();
-				
+			return;
+		}
+
+		busy = true;
+		boolean found = model.isIn(i);
+		List<Integer> path = computeDeletePath(i);
+		Runnable finalAction = found ? () -> model.delete(i) : null;
+
+		if (stepMode) {
+			startStepAnimation(path, finalAction, onFinished);
+		} else {
+			animateThenDelete(path, i, found, onFinished);
+		}
+	}
+
+	public void searchInt(Integer i, Runnable onFinished) {
+		if (busy) {
+			return;
+		}
+		if (!animationMode) {
+			if (onFinished != null) {
+				onFinished.run();
+			}
+			return;
+		}
+
+		busy = true;
+		boolean found = model.isIn(i);
+		List<Integer> path = computeSearchPath(i);
+
+		Runnable markResult = () -> {
+			replacementValue = found ? i : null;
+			repaint();
+		};
+
+		if (stepMode) {
+			startStepAnimation(path, markResult, onFinished);
+		} else {
+			animateSearchThenMark(path, markResult, onFinished);
+		}
+	}
+
+	// PARCOURS
+
+	public void traversePreorder(Runnable onFinished) {
+		runTraversal(preorderValues(model.getRoot(), new ArrayList<>()), onFinished);
+	}
+
+	public void traverseInorder(Runnable onFinished) {
+		runTraversal(inorderValues(model.getRoot(), new ArrayList<>()), onFinished);
+	}
+
+	public void traversePostorder(Runnable onFinished) {
+		runTraversal(postorderValues(model.getRoot(), new ArrayList<>()), onFinished);
+	}
+
+	public void traverseLevelOrder(Runnable onFinished) {
+		runTraversal(levelOrderValues(model.getRoot()), onFinished);
+	}
+
+	private void runTraversal(List<Integer> path, Runnable onFinished) {
+		if (busy) {
+			if (onFinished != null) {
+				onFinished.run();
+			}
+			return;
+		}
+		busy = true;
+		if (stepMode) {
+			startStepAnimation(path, null, onFinished);
+		} else {
+			animatePath(path, onFinished);
+		}
+	}
+
+	private List<Integer> preorderValues(StdValuedNode<Integer> node, List<Integer> acc) {
+		if (node == null) {
+			return acc;
+		}
+		acc.add(node.getValue());
+		preorderValues(node.getLeft(), acc);
+		preorderValues(node.getRight(), acc);
+		return acc;
+	}
+
+	private List<Integer> inorderValues(StdValuedNode<Integer> node, List<Integer> acc) {
+		if (node == null) {
+			return acc;
+		}
+		inorderValues(node.getLeft(), acc);
+		acc.add(node.getValue());
+		inorderValues(node.getRight(), acc);
+		return acc;
+	}
+
+	private List<Integer> postorderValues(StdValuedNode<Integer> node, List<Integer> acc) {
+		if (node == null) {
+			return acc;
+		}
+		postorderValues(node.getLeft(), acc);
+		postorderValues(node.getRight(), acc);
+		acc.add(node.getValue());
+		return acc;
+	}
+
+	private List<Integer> levelOrderValues(StdValuedNode<Integer> root) {
+		List<Integer> acc = new ArrayList<>();
+		if (root == null) {
+			return acc;
+		}
+		ArrayDeque<StdValuedNode<Integer>> bfsQueue = new ArrayDeque<>();
+		bfsQueue.add(root);
+		while (!bfsQueue.isEmpty()) {
+			StdValuedNode<Integer> n = bfsQueue.poll();
+			acc.add(n.getValue());
+			if (n.getLeft() != null) {
+				bfsQueue.add(n.getLeft());
+			}
+			if (n.getRight() != null) {
+				bfsQueue.add(n.getRight());
+			}
+		}
+		return acc;
+	}
+
+	// MOTEUR D'ANIMATION (propre à BSTPanel)
+
+	private void animatePath(List<Integer> path, Runnable onFinished) {
+		final int[] index = {0};
+		Timer timer = new Timer(500, null);
+		timer.addActionListener(e -> {
+			if (index[0] < path.size()) {
+				highlightedValue = path.get(index[0]);
 				repaint();
+				index[0]++;
+			} else {
+				timer.stop();
+				highlightedValue = null;
+				repaint();
+				busy = false;
+				if (onFinished != null) {
+					onFinished.run();
+				}
 			}
 		});
-		
-		addMouseWheelListener(this::handleZoom);
+		timer.start();
 	}
-	
-	
-	private void handleZoom(MouseWheelEvent e) {
-		double zoomFactor = (e.getWheelRotation() < 0) ? 1.1 : 0.9;
 
-		double mouseX = e.getX();
-		double mouseY = e.getY();
+	private void animateSearchThenMark(List<Integer> path, Runnable finalAction, Runnable onFinished) {
+		final int[] index = {0};
+		Timer timer = new Timer(500, null);
+		timer.addActionListener(e -> {
+			if (index[0] < path.size()) {
+				highlightedValue = path.get(index[0]);
+				repaint();
+				index[0]++;
+			} else {
+				timer.stop();
+				highlightedValue = null;
+				finalAction.run();
+				busy = false;
+				if (onFinished != null) {
+					onFinished.run();
+				}
+			}
+		});
+		timer.start();
+	}
 
-		offsetX = mouseX - (mouseX - offsetX) * zoomFactor;
-		offsetY = mouseY - (mouseY - offsetY) * zoomFactor;
-		scale *= zoomFactor;
+	private void animateThenDelete(List<Integer> path, int valueToDelete, boolean found, Runnable onFinished) {
+		final int[] index = {0};
+		Timer timer = new Timer(500, null);
+		timer.addActionListener(e -> {
+			if (index[0] < path.size()) {
+				highlightedValue = path.get(index[0]);
+				repaint();
+				index[0]++;
+			} else {
+				timer.stop();
+				highlightedValue = null;
+				replacementValue = null;
+				if (found) {
+					model.delete(valueToDelete);
+				}
+				repaint();
+				busy = false;
+				if (onFinished != null) {
+					onFinished.run();
+				}
+			}
+		});
+		timer.start();
+	}
 
+	private void startStepAnimation(List<Integer> path, Runnable finalAction, Runnable onFinished) {
+		pendingPath = path;
+		pendingIndex = 0;
+		pendingFinalAction = finalAction;
+		pendingOnFinished = onFinished;
+		highlightedValue = null;
 		repaint();
 	}
-	
-	public void resetView() {
-		scale = 1.0;
-		offsetX = 0;
-		offsetY = 0;
-		repaint();
+
+	@Override
+	public void nextStep() {
+		if (pendingPath == null) {
+			return;
+		}
+		if (pendingIndex < pendingPath.size()) {
+			highlightedValue = pendingPath.get(pendingIndex);
+			pendingIndex++;
+			repaint();
+		} else {
+			highlightedValue = null;
+			replacementValue = null;
+			if (pendingFinalAction != null) {
+				pendingFinalAction.run();
+			}
+			Runnable finished = pendingOnFinished;
+			pendingPath = null;
+			pendingFinalAction = null;
+			pendingOnFinished = null;
+			busy = false;
+			repaint();
+			if (finished != null) {
+				finished.run();
+			}
+		}
 	}
-	
-	public void setBackground() {
-		this.setBackground(Color.WHITE);
+
+	private List<Integer> computeSearchPath(int v) {
+		List<Integer> path = new ArrayList<>();
+		StdValuedNode<Integer> current = model.getRoot();
+		Comparator<Integer> cmp = model.getComparator();
+		while (current != null) {
+			path.add(current.getValue());
+			int c = cmp.compare(v, current.getValue());
+			if (c == 0) {
+				break;
+			}
+			current = (c < 0) ? current.getLeft() : current.getRight();
+		}
+		path.add(v);
+		return path;
 	}
-	
 
-    public void setAnimationMode(boolean enabled) { // NOUVEAU
-        this.animationMode = enabled;
-    }
-	
-    // NOUVEAU : anime le parcours nœud par nœud
-    private void animatePath(List<Integer> path) {
-        final int[] index = {0};
-        Timer timer = new Timer(500, null); // 500 ms entre chaque étape
-        timer.addActionListener(e -> {
-            if (index[0] < path.size()) {
-                highlightedValue = path.get(index[0]);
-                repaint();
-                index[0]++;
-            } else {
-                timer.stop();
-                highlightedValue = null;
-                repaint();
-            }
-        });
-        timer.start();
-    }
-    
-    // NOUVEAU : reconstitue le chemin parcouru par l'algorithme d'ajout
-    private List<Integer> computeSearchPath(int v) {
-        List<Integer> path = new ArrayList<>();
-        StdValuedNode<Integer> current = model.getRoot();
-        Comparator<Integer> cmp = model.getComparator();
-        while (current != null) {
-            path.add(current.getValue());
-            int c = cmp.compare(v, current.getValue());
-            if (c == 0) {
-                break;
-            }
-            current = (c < 0) ? current.getLeft() : current.getRight();
-        }
-        path.add(v); // le nœud finalement créé/trouvé est aussi surligné
-        return path;
-    }
-    
-    
- // NOUVEAU : reconstitue le chemin parcouru par l'algorithme de suppression
-    private List<Integer> computeDeletePath(int v) {
-        List<Integer> path = new ArrayList<>();
-        StdValuedNode<Integer> current = model.getRoot();
-        Comparator<Integer> cmp = model.getComparator();
+	private List<Integer> computeDeletePath(int v) {
+		List<Integer> path = new ArrayList<>();
+		StdValuedNode<Integer> current = model.getRoot();
+		Comparator<Integer> cmp = model.getComparator();
 
-        while (current != null) {
-            path.add(current.getValue());
-            int c = cmp.compare(v, current.getValue());
-            if (c == 0) {
-                break;
-            }
-            current = (c < 0) ? current.getLeft() : current.getRight();
-        }
+		while (current != null) {
+			path.add(current.getValue());
+			int c = cmp.compare(v, current.getValue());
+			if (c == 0) {
+				break;
+			}
+			current = (c < 0) ? current.getLeft() : current.getRight();
+		}
 
-        replacementValue = null; // NOUVEAU : réinitialisation à chaque appel
+		replacementValue = null;
 
-        if (current != null && current.getLeft() != null && current.getRight() != null) {
-            StdValuedNode<Integer> successor = current.getRight();
-            while (successor.getLeft() != null) {
-                path.add(successor.getValue());
-                successor = successor.getLeft();
-            }
-            path.add(successor.getValue());
-            replacementValue = successor.getValue(); // NOUVEAU : on retient LE nœud remplaçant
-        }
+		if (current != null && current.getLeft() != null && current.getRight() != null) {
+			StdValuedNode<Integer> successor = current.getRight();
+			while (successor.getLeft() != null) {
+				path.add(successor.getValue());
+				successor = successor.getLeft();
+			}
+			path.add(successor.getValue());
+			replacementValue = successor.getValue();
+		}
 
-        return path;
-    }
-    
+		return path;
+	}
 }

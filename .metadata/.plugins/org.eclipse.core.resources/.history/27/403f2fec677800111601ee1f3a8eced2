@@ -1,0 +1,40 @@
+package utils;
+
+import javax.swing.JButton;
+
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Font;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+
+import javax.swing.BorderFactory;
+
+public class StyledButton extends JButton {
+
+	private static final Color PRIMARY_COLOR = new Color(66, 133, 244);
+	private static final Color PRIMARY_HOVER = new Color(50, 110, 220);
+
+	public StyledButton(String text) {
+		super(text);
+		setFont(new Font("Segoe UI", Font.PLAIN, 14));
+		setForeground(Color.WHITE);
+		setBackground(PRIMARY_COLOR);
+		setFocusPainted(false);
+		setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+		setCursor(new Cursor(Cursor.HAND_CURSOR));
+		setOpaque(true);
+		setBorderPainted(false);
+
+		addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseEntered(MouseEvent e) {
+				setBackground(PRIMARY_HOVER);
+			}
+			@Override
+			public void mouseExited(MouseEvent e) {
+				setBackground(PRIMARY_COLOR);
+			}
+		});
+	}
+}

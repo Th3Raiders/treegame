@@ -1,0 +1,19 @@
+package node;
+
+public class StdAVLNode<T extends AVLNode<T>> extends StdValuedNode<T> implements AVLNode<StdAVLNode<T>, T> {
+
+	// ATTRIBUTS
+	
+	protected int height;
+	
+	public StdAVLNode(T v) {
+		super(v);
+		this.height = 0;
+	}
+
+	@Override
+	public int getHeight() {
+		return this.height;
+	}
+
+}

@@ -1,0 +1,7 @@
+package tree;
+
+public interface TreeOperation<T> {
+	
+	public boolean isIn(T x);
+	
+}

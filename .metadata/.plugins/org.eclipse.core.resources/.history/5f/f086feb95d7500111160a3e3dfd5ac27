@@ -1,0 +1,41 @@
+package binarytree;
+
+public class StdNode implements Node {
+	
+	// ATTRIBUTS
+	
+	protected Node left;
+	protected Node right;
+	
+	// CONSTRUCTEURS
+	
+	public StdNode() {
+		this.left = null;
+		this.right = null;
+	}
+	
+	// REQUETES
+	
+	@Override
+	public Node getLeft() {
+		return left;
+	}
+
+	@Override
+	public Node getRight() {
+		return right;
+	}
+
+	// COMMANDES
+	
+	@Override
+	public void setLeft(Node n) {
+		this.left = n;
+	}
+
+	@Override
+	public void setRight(Node n) {
+		this.right = n;
+	}
+
+}

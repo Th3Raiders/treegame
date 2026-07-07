@@ -1,0 +1,13 @@
+package binarytree;
+
+import javax.swing.JFrame;
+
+public class treegame {
+	// ATTRIBUTS D'INSTANCE
+	
+	private JFrame frame;
+	
+	// CONSTRUCTEURS
+	
+	 public treegame() {
+}

@@ -1,0 +1,25 @@
+package tree;
+
+import node.Node;
+
+public class BinarySearchTree<N extends Node<N>,T> extends AbstractTree<N> implements TreeOperation<T> {
+
+	@Override
+	public boolean isIn(T x) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public void add(T x) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void delete(T x) {
+		// TODO Auto-generated method stub
+		
+	}
+
+}

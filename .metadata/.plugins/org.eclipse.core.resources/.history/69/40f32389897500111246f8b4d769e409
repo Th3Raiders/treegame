@@ -1,0 +1,7 @@
+package tree;
+
+import node.Node;
+
+public class BinarySearchTree<N extends Node<N>> extends AbstractTree<N> implements TreeOperation<T> {
+
+}

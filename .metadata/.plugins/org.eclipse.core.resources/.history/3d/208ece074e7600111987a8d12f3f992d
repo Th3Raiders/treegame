@@ -1,0 +1,81 @@
+package tree;
+
+import java.util.Comparator;
+import java.util.function.Function;
+
+import node.AVLNode;
+
+public class StdAVLTree<N extends AVLNode<N, T>, T> extends StdBSTTree<N, T> implements BSTTree<N, T> {
+
+	// CONSTRUCTEURS
+	
+	public StdAVLTree(Comparator<T> c, Function<T, N> f) {
+		super(c, f);
+	}
+	
+	public StdAVLTree(Comparator<T> c, Function<T, N> f,N n) {
+		super(c, f,n);
+	}
+
+	// COMMANDES
+	@Override
+	public void add(T x) {
+		this.setRoot(addValue(x,getRoot()));
+	}
+	
+	public void delete(T x) {
+		this.setRoot(deleteValue(x,getRoot()));
+	}
+	
+	// OUTILS
+	
+	private N addValueAVL(T value,N node) {
+		if(node == null) {
+			return factory.apply(value);
+		}
+		int c = comparator.compare(value,node.getValue());
+		if(c == 0) {
+			return node;
+		}
+		if(c < 0) {
+			node.setLeft(addValue(value,node.getLeft()));
+		} else {
+			node.setRight(addValue(value,node.getRight()));
+		}
+		updateHeight(node);
+		return node;
+	}
+	
+	
+	private void updateHeight(N n) {
+		n.setHeight(1 + Math.max(height(n.getLeft()), height(n.getRight())));
+	}
+	
+	private int height(N n) {
+		if(n == null) {
+			return 0;
+		}
+		return n.getHeight();
+	}
+	
+	
+	
+	
+	private N deleteValue(T value, N node) {
+		if (node == null) return null;
+		int c = getComparator().compare(value, node.getValue());
+		if (c < 0) {
+			node.setLeft(deleteValue(value, node.getLeft()));
+		} else if (c > 0) {
+			node.setRight(deleteValue(value, node.getRight()));
+		} else {
+			if (node.getLeft() == null) return node.getRight();
+			if (node.getRight() == null) return node.getLeft();
+			N successor = min(node.getRight());
+			node.setValeur(successor.getValue());
+			node.setRight(deleteValue(successor.getValue(), node.getRight()));
+		}
+		updateHeight(node);
+		return rebalance(node);
+	}
+}

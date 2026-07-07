@@ -1,0 +1,16 @@
+package tree;
+
+import java.util.Comparator;
+import java.util.function.Function;
+
+import node.AVLNode;
+import node.ValuedNode;
+
+public class StdAVLTree<N extends AVLNode<N, T>, T> extends StdBSTTree<N, T> implements BSTTree<N, T> {
+
+	public StdAVLTree(Comparator<T> c, Function<T, N> f) {
+		super(c, f);
+		// TODO Auto-generated constructor stub
+	}
+
+}

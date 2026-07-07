@@ -1,0 +1,24 @@
+package binarytree;
+
+import java.util.Comparator;
+
+import node.Node;
+import node.StdValuedNode;
+import tree.BSTTree;
+import tree.StdBSTTree;
+import tree.StdTree;
+import tree.Tree;
+
+public class Pdt {
+	    public static void main(String[] args) {
+	    	
+	    	{
+	    		
+	    		BSTTree<StdValuedNode<Integer>, Integer> t =  new StdBSTTree<StdValuedNode<Integer>, Integer>(Comparator.naturalOrder(),StdValuedNode::new);
+	    		for(int i = 0; i < 10; i++) {
+	    			t.add(i);
+	    		}
+	    		System.out.println(t.getSize());
+	    	}
+	    }
+}

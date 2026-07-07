@@ -1,0 +1,40 @@
+/*
+ * @inv
+ * 	getHeight() >= 0
+ * 	getSize() >= 0
+ * 	getDistance() >= 0	
+ * 	isEmpty() <==> getRoot() == null
+ * @cons <pre>
+ *     $ARGS$ -
+ *     $POST$
+ *         getSize() == 0
+ *         getHeight() == 0
+ *         getDistance() == 0
+ *         isEmpty()
+ *         getRoot() = null
+ *         !isSynchronized() </pre>
+ */
+
+package binarytree;
+
+public interface Tree {
+	
+	
+    // REQUETES
+	
+	public Node getRoot();
+	
+	public boolean isEmpty();
+	
+	public int getSize();
+	
+	public int getHeight();
+	
+	public int getDistance();
+	
+	// COMMANDES
+	
+	
+	public void setRoot(Node n);
+	
+}

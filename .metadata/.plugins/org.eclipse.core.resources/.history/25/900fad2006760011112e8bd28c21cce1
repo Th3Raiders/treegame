@@ -1,0 +1,15 @@
+package tree;
+
+public interface TreeOperation<T> {
+	
+	//REQUETES
+	
+	public boolean isIn(T x);
+	
+	// COMMANDES
+	
+	public void add(T x);
+	
+	public void delete(T x);
+	
+}

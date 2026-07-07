@@ -1,0 +1,9 @@
+package tree;
+
+public interface TreeOperation<T> {
+	
+	//REQUETES
+	
+	public boolean isIn(T x);
+	
+}

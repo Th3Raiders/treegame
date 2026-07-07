@@ -1,0 +1,213 @@
+import java.util.ArrayList;
+import java.util.List;
+
+import node.StdAVLNode;
+
+public void addInt(Integer v) { // MODIFIÉ
+	addInt(v, null);
+}
+
+public void addInt(Integer v, Runnable onFinished) { // NOUVEAU
+	if (busy) {
+		return;
+	}
+	if (!animationMode) {
+		model.add(v);
+		repaint();
+		if (onFinished != null) {
+			onFinished.run();
+		}
+		return;
+	}
+	if (model.isIn(v)) {
+		if (onFinished != null) {
+			onFinished.run();
+		}
+		return;
+	}
+
+	busy = true;
+	Deque<AnimStep> queue = new ArrayDeque<>();
+	Comparator<Integer> cmp = model.getComparator();
+
+	List<StdAVLNode<Integer>> ancestors = new ArrayList<>();
+	StdAVLNode<Integer> current = model.getRoot();
+	while (current != null) {
+		ancestors.add(current);
+		current = (cmp.compare(v, current.getValue()) < 0) ? current.getLeft() : current.getRight();
+	}
+	for (StdAVLNode<Integer> a : ancestors) {
+		queue.add(new HighlightStep(a.getValue(), SEARCH_STEP_MS,
+				"Descente : comparaison de " + v + " avec " + a.getValue()));
+	}
+
+	queue.add(new AnimStep() {
+		@Override
+		public void run(Runnable onDone) {
+			Map<StdAVLNode<Integer>, Point2D.Double> before = snapshotLayout();
+			StdAVLNode<Integer> leaf = new StdAVLNode<>(v);
+			if (ancestors.isEmpty()) {
+				model.setRoot(leaf);
+			} else {
+				StdAVLNode<Integer> parent = ancestors.get(ancestors.size() - 1);
+				if (cmp.compare(v, parent.getValue()) < 0) {
+					parent.setLeft(leaf);
+				} else {
+					parent.setRight(leaf);
+				}
+			}
+			Map<StdAVLNode<Integer>, Point2D.Double> after = snapshotLayout();
+			new TransitionStep(before, after, "Insertion du nœud " + v + " en tant que feuille",
+					TRANSITION_DURATION_MS, HOLD_DURATION_MS).run(onDone);
+		}
+	});
+
+	List<StdAVLNode<Integer>> chain = new ArrayList<>(ancestors);
+	Collections.reverse(chain);
+	appendRebalanceSteps(queue, chain);
+
+	runQueue(queue, () -> {
+		busy = false;
+		highlightedValue = null;
+		replacementValue = null;
+		infoMessage = null;
+		repaint();
+		if (onFinished != null) { // NOUVEAU
+			onFinished.run();
+		}
+	});
+}
+
+public void deleteInt(Integer v) { // MODIFIÉ
+	deleteInt(v, null);
+}
+
+public void deleteInt(Integer v, Runnable onFinished) { // NOUVEAU
+	if (busy) {
+		return;
+	}
+	if (!animationMode) {
+		model.delete(v);
+		repaint();
+		if (onFinished != null) {
+			onFinished.run();
+		}
+		return;
+	}
+	if (!model.isIn(v)) {
+		if (onFinished != null) {
+			onFinished.run();
+		}
+		return;
+	}
+
+	busy = true;
+	Deque<AnimStep> queue = new ArrayDeque<>();
+	Comparator<Integer> cmp = model.getComparator();
+
+	List<StdAVLNode<Integer>> ancestorsToNode = new ArrayList<>();
+	StdAVLNode<Integer> current = model.getRoot();
+	while (current != null) {
+		ancestorsToNode.add(current);
+		int c = cmp.compare(v, current.getValue());
+		if (c == 0) {
+			break;
+		}
+		current = (c < 0) ? current.getLeft() : current.getRight();
+	}
+	for (StdAVLNode<Integer> a : ancestorsToNode) {
+		queue.add(new HighlightStep(a.getValue(), SEARCH_STEP_MS,
+				"Recherche du nœud " + v + " : comparaison avec " + a.getValue()));
+	}
+
+	final StdAVLNode<Integer> target = ancestorsToNode.get(ancestorsToNode.size() - 1);
+
+	if (target.getLeft() == null || target.getRight() == null) {
+		queue.add(new AnimStep() {
+			@Override
+			public void run(Runnable onDone) {
+				Map<StdAVLNode<Integer>, Point2D.Double> before = snapshotLayout();
+				StdAVLNode<Integer> replacement = (target.getLeft() != null) ? target.getLeft() : target.getRight();
+				StdAVLNode<Integer> targetParent =
+						ancestorsToNode.size() >= 2 ? ancestorsToNode.get(ancestorsToNode.size() - 2) : null;
+				if (targetParent == null) {
+					model.setRoot(replacement);
+				} else if (targetParent.getLeft() == target) {
+					targetParent.setLeft(replacement);
+				} else {
+					targetParent.setRight(replacement);
+				}
+				Map<StdAVLNode<Integer>, Point2D.Double> after = snapshotLayout();
+				new TransitionStep(before, after, "Suppression du nœud " + v + " (0 ou 1 enfant)",
+						TRANSITION_DURATION_MS, HOLD_DURATION_MS).run(onDone);
+			}
+		});
+
+		List<StdAVLNode<Integer>> chain =
+				new ArrayList<>(ancestorsToNode.subList(0, ancestorsToNode.size() - 1));
+		Collections.reverse(chain);
+		appendRebalanceSteps(queue, chain);
+
+	} else {
+		List<StdAVLNode<Integer>> pathToSuccessor = new ArrayList<>();
+		StdAVLNode<Integer> succ = target.getRight();
+		pathToSuccessor.add(succ);
+		while (succ.getLeft() != null) {
+			succ = succ.getLeft();
+			pathToSuccessor.add(succ);
+		}
+		final StdAVLNode<Integer> successor = succ;
+		replacementValue = successor.getValue();
+
+		for (StdAVLNode<Integer> a : pathToSuccessor) {
+			queue.add(new HighlightStep(a.getValue(), SEARCH_STEP_MS,
+					"Recherche du successeur (plus petit du sous-arbre droit) : on descend à gauche vers " + a.getValue()));
+		}
+
+		queue.add(new AnimStep() {
+			@Override
+			public void run(Runnable onDone) {
+				Map<StdAVLNode<Integer>, Point2D.Double> before = snapshotLayout();
+				int successorValue = successor.getValue();
+				target.setValue(successorValue);
+				StdAVLNode<Integer> succReplacement = successor.getRight();
+				StdAVLNode<Integer> succParent = pathToSuccessor.size() >= 2
+						? pathToSuccessor.get(pathToSuccessor.size() - 2)
+						: target;
+				if (succParent.getLeft() == successor) {
+					succParent.setLeft(succReplacement);
+				} else {
+					succParent.setRight(succReplacement);
+				}
+				Map<StdAVLNode<Integer>, Point2D.Double> after = snapshotLayout();
+				new TransitionStep(before, after,
+						"Le nœud " + v + " a deux enfants : on le remplace par son successeur " + successorValue,
+						TRANSITION_DURATION_MS, HOLD_DURATION_MS).run(onDone);
+			}
+		});
+
+		List<StdAVLNode<Integer>> chain = new ArrayList<>();
+		List<StdAVLNode<Integer>> succAncestorsExcludingSucc =
+				new ArrayList<>(pathToSuccessor.subList(0, pathToSuccessor.size() - 1));
+		Collections.reverse(succAncestorsExcludingSucc);
+		chain.addAll(succAncestorsExcludingSucc);
+		chain.add(target);
+		List<StdAVLNode<Integer>> aboveTarget =
+				new ArrayList<>(ancestorsToNode.subList(0, ancestorsToNode.size() - 1));
+		Collections.reverse(aboveTarget);
+		chain.addAll(aboveTarget);
+
+		appendRebalanceSteps(queue, chain);
+	}
+
+	runQueue(queue, () -> {
+		busy = false;
+		highlightedValue = null;
+		replacementValue = null;
+		infoMessage = null;
+		repaint();
+		if (onFinished != null) { // NOUVEAU
+			onFinished.run();
+		}
+	});
+}

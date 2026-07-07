@@ -1,0 +1,5 @@
+package node;
+
+public interface AVLNode<N extends ValuedNode<N>,T> extends ValuedNode<N, T> {
+
+}

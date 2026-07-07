@@ -1,0 +1,59 @@
+package node;
+
+public class StdValuedNode<T> implements ValuedNode<StdValuedNode<T>, T> {
+
+	// ATTRIBUTS
+
+	protected StdValuedNode<T> left;
+	protected StdValuedNode<T> right;
+	private T value;
+
+	// CONSTRUCTEURS
+
+	public StdValuedNode(T v) {
+		if(v == null) {
+			throw new AssertionError("V ne doit pas être null");
+		}
+		this.left = null;
+		this.right = null;
+		this.value = v;
+	}
+
+	// REQUETES
+
+	@Override
+	public StdValuedNode<T> getLeft() {
+		return this.left;
+	}
+
+	@Override
+	public StdValuedNode<T> getRight() {
+		return this.right;
+	}
+
+	public T getValue() {
+		return this.value;
+	}
+	
+	// COMMANDES
+
+	@Override
+	public void setLeft(StdValuedNode<T> n) {
+		this.left = n;
+	}
+
+	@Override
+	public void setRight(StdValuedNode<T> n) {
+		this.right = n;
+	}
+
+	@Override
+	public void setValue(T v) {
+		if(v == null) {
+			throw new AssertionError("V ne doit pas être null");	
+		}
+		this.value = v;
+	}
+
+
+}

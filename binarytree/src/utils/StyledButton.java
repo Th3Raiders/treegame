@@ -27,6 +27,7 @@ public class StyledButton extends JButton {
 		setForeground(Color.WHITE);
 		setContentAreaFilled(false);   // NOUVEAU : on désactive le fond par défaut
 		setFocusPainted(false);
+		setDisabledIcon(null);
 		setBorderPainted(false);
 		setOpaque(false);
 		setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -58,13 +59,15 @@ public class StyledButton extends JButton {
 
 	@Override
 	protected void paintComponent(Graphics g) {
-		Graphics2D g2 = (Graphics2D) g.create();
-		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+	    Graphics2D g2 = (Graphics2D) g.create();
+	    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-		g2.setColor(currentColor);
-		g2.fillRoundRect(0, 0, getWidth(), getHeight(), ARC, ARC); // NOUVEAU : forme arrondie
+	    Color colorToUse = isEnabled() ? currentColor : new Color(180, 180, 180); // NOUVEAU
+	    g2.setColor(colorToUse);
+	    g2.fillRoundRect(0, 0, getWidth(), getHeight(), ARC, ARC);
 
-		g2.dispose();
-		super.paintComponent(g); // dessine le texte par-dessus, avec la police/couleur déjà définies
+	    g2.dispose();
+	    setForeground(isEnabled() ? Color.WHITE : new Color(230, 230, 230));
+	    super.paintComponent(g);
 	}
 }

@@ -1,0 +1,78 @@
+package tree;
+
+import node.Node;
+
+public class AbstractTree<N extends Node<N>> implements Tree<N> {
+
+	// ATTRIBUTS
+
+	protected N root;
+
+	// CONSTRUCTEURS
+
+	public StdTree() {
+		this.root = null;
+	}
+
+	public StdTree(N n) {
+		this.root = n;
+	}
+
+	// REQUETES
+
+	@Override
+	public N getRoot() {
+		return root;
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return root == null;
+	}
+
+	@Override
+	public int getSize() {
+		return size(getRoot());
+	}
+
+	@Override
+	public int getHeight() {
+		return height(getRoot());
+	}
+
+	@Override
+	public int getDistance() {
+		return distance(getRoot());
+	}
+
+	// COMMANDES
+
+	@Override
+	public void setRoot(N n) {
+		this.root = n;
+	}
+
+	// OUTILS PRIVES
+
+	private int size(N n) {
+		if (n == null) {
+			return 0;
+		}
+		return 1 + size(n.getLeft()) + size(n.getRight());
+	}
+
+	private int height(N n) {
+		if (n == null) {
+			return 0;
+		}
+		return 1 + Math.max(height(n.getLeft()), height(n.getRight()));
+	}
+
+	private int distance(N n) {
+		if (n == null) {
+			return 0;
+		}
+		return 1 + Math.min(distance(n.getLeft()), distance(n.getRight()));
+	}
+
+}

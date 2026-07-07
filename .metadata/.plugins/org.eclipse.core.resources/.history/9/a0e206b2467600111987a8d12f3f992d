@@ -1,0 +1,50 @@
+package node;
+
+public abstract class AbstractValuedNode<N extends ValuedNode<N, T>, T> implements ValuedNode<N, T> {
+	
+	// ATTRIBUTS
+
+	protected N left;
+	protected N right;
+	private T value;
+	
+	// CONSTRUCTEURS
+
+	public AbstractValuedNode(T v) {
+		if(v == null) {
+			throw new AssertionError("v ne doit pas être null");
+		}
+		this.left = null;
+		this.right = null;
+		this.value = v;
+	}
+
+	// REQUETES
+
+	@Override
+	public N getLeft() {
+		return this.left;
+	}
+
+	@Override
+	public N getRight() {
+		return this.right;
+	}
+
+	public T getValue() {
+		return this.value;
+	}
+	
+	// COMMANDES
+	
+	@Override
+	public void setLeft(N n) { this.left = n; }
+
+	@Override
+	public void setRight(N n) { this.right = n; }
+
+	@Override
+	public void setValeur(T v) { this.valeur = v; }
+
+
+}

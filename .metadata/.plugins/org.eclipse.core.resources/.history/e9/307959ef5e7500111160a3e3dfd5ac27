@@ -1,0 +1,46 @@
+package node;
+
+public class StdValuedNode<T> implements Node<StdValuedNode<T>> {
+
+	// ATTRIBUTS
+
+	protected StdValuedNode<T> left;
+	protected StdValuedNode<T> right;
+	private T value;
+
+	// CONSTRUCTEURS
+	
+	public StdValuedNode(T v) {
+		this.left = null;
+		this.right = null;
+		this.value = v;
+	}
+	
+	// REQUETES
+	
+	@Override
+	public StdValuedNode<T> getLeft() {
+		return left;
+	}
+
+	@Override
+	public StdValuedNode<T> getRight() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	// COMMANDES
+	
+	@Override
+	public void setLeft(StdValuedNode<T> n) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void setRight(StdValuedNode<T> n) {
+		// TODO Auto-generated method stub
+		
+	}
+
+}

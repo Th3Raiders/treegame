@@ -1,0 +1,53 @@
+package node;
+
+public class StdValuedNode<T> implements ValuedNode<StdValuedNode<T>, T> {
+
+	// ATTRIBUTS
+
+	protected StdValuedNode<T> left;
+	protected StdValuedNode<T> right;
+	private T valeur;
+
+	// CONSTRUCTEURS
+
+	public StdValuedNode(T v) {
+		this.left = null;
+		this.right = null;
+		this.valeur = v;
+	}
+
+	// REQUETES
+
+	@Override
+	public StdValuedNode<T> getLeft() {
+		return this.left;
+	}
+
+	@Override
+	public StdValuedNode<T> getRight() {
+		return this.right;
+	}
+
+	@Override
+	public T getValeur() {
+		return this.valeur;
+	}
+
+	// COMMANDES
+
+	@Override
+	public void setLeft(StdValuedNode<T> n) {
+		this.left = n;
+	}
+
+	@Override
+	public void setRight(StdValuedNode<T> n) {
+		this.right = n;
+	}
+
+	@Override
+	public void setValeur(T v) {
+		this.valeur = v;
+	}
+
+}

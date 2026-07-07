@@ -1,0 +1,7 @@
+package tree;
+
+import node.Node;
+
+public class AbstractTree<N extends Node<N>> implements Tree<N> {
+
+}

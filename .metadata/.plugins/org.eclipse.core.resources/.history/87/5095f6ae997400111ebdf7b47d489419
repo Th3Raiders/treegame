@@ -1,0 +1,16 @@
+
+
+package binarytree;
+
+public interface Tree {
+    // REQUETES
+	
+	
+	public Node getRoot();
+	
+	public int getSize();
+	
+	public int getHeight();
+	
+	public int getDistance();
+}

@@ -1,0 +1,21 @@
+/*
+ * Modélise le noeud d'un arbre binaire valué AVL, des valeurs peuvent lui être associé.
+ *  * @cons <pre>
+ *     $DESC$ Un noeud n'ayant pas de sous arbre gauche ni droit.
+ *     $ARGS$ T v
+ *     $PRE$
+ *     		  V != null
+ *     $POST$ getLeft() == null
+ *     		  getRight() == null
+ *     		  getValue() == v </pre>
+ */
+
+
+package node;
+
+public interface AVLNode<N extends AVLNode<N,T>,T> extends ValuedNode<N, T> {
+	
+	public int getHeight();
+	
+	
+}

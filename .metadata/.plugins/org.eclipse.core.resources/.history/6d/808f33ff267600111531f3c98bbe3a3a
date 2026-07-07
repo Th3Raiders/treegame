@@ -1,0 +1,5 @@
+package node;
+
+public class StdAVLNode<T> extends StdValuedNode<T> implements AVLNode<N, T> {
+
+}

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<item key="hasShownOverlayPopupBefore" value="true"/>
+	<section name="java.lang.Class">
+		<item key="replaceBarOpen" value="true"/>
+		<list key="findhistory">
+			<item value="addInt"/>
+			<item value="runQueue"/>
+			<item value="addInT"/>
+			<item value="newLocalRoot == n"/>
+			<item value="newLocalRoot"/>
+			<item value="bstPanel.setStepMode(enabled)"/>
+			<item value="bstPanel.setStepMode(enabled);"/>
+			<item value="avlPanel.setStepMode(enabled);"/>
+			<item value="avlPanel.setStepMode(enabled)"/>
+		</list>
+	</section>
+</section>

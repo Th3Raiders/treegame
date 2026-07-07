@@ -1,0 +1,28 @@
+/*
+ * Modélise le noeud d'un arbre binaire valué, des valeurs peuvent lui être associé.
+ *  * @cons <pre>
+ *     $DESC$ Un noeud n'ayant pas de sous arbre gauche ni droit.
+ *     $ARGS$ T v
+ *     $PRE$
+ *     		  V != null
+ *     $POST$ getLeft() == null
+ *     		  getRight() == null
+ *     		  getValue() == v </pre>
+ */
+
+
+package node;
+
+public interface ValuedNode<N extends ValuedNode<N, T>, T> extends Node<N> {
+	
+
+	// REQUETES
+
+	public T getValue();
+
+	// COMMANDES
+
+	public void setValue(T v);
+	
+	
+}

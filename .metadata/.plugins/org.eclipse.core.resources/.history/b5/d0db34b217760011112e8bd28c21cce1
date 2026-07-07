@@ -1,0 +1,27 @@
+/*
+ * Modélise le noeud d'un arbre binaire, aucune valeur ne lui est associé.
+ *  * @cons <pre>
+ *     $DESC$ Un noeud n'ayant pas de sous arbres gauche ni droit.
+ *     $ARGS$ -
+ *     $POST$ getLeft() == null
+ *     		  getRight == null </pre>
+ */
+
+
+package node;
+
+public interface ValuedNode<N extends ValuedNode<N, T>, T> extends Node<N> {
+	
+
+	// REQUETES
+
+	
+	
+	public T getValue();
+
+	// COMMANDES
+
+	public void setValeur(T v);
+	
+	
+}

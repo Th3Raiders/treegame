@@ -1,0 +1,44 @@
+/* Modèle d'un arbre binaire de recherche.
+ * 
+ * 
+ * 
+ * 
+ * 
+ */
+
+
+package tree;
+
+import java.util.Comparator;
+
+import node.ValuedNode;
+
+public interface BSTTree<N extends ValuedNode<N, T>, T> extends Tree<N> {
+	
+	
+	//REQUETES
+	
+    /**
+     * Cherche dans l'arbre la valeur x.
+     * @pre <pre>
+     *     x != null </pre>
+     */
+	public boolean isIn(T x);
+	
+	public Comparator<T> getComparator();
+	
+	// COMMANDES
+	
+    /**
+     * Cherche dans l'arbre la valeur x.
+     * @pre <pre>
+     *     x != null </pre>
+     * @post <pre>
+     * 	   isIn(x) </pre>
+     */
+	public void add(T x);
+	
+	public void delete(T x);
+	
+	public void printTree();
+}

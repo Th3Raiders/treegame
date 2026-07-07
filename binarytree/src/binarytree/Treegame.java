@@ -26,6 +26,8 @@ public class Treegame {
 		
 	
 	
+	
+	
 	private static final int GEN_NUMBER = 10;
 	private static final int GEN_MAX = 100;
 	private static final int GEN_MIN = 1;
@@ -33,8 +35,15 @@ public class Treegame {
 	private static final int FRAME_WIDTH = 1400;
 	private static final int FRAME_HEIGHT = 800;
 	
+	 /**
+     * Fenêtre du programme.
+     */
 	private JFrame frame;
 	
+	 /**
+     * Les différents boutons correspondants à des actions diverses
+     * ayant des effets sur les arbres.
+     */
 	private JButton addButton;
 	private JButton deleteButton;
 	private JButton searchButton;
@@ -42,10 +51,25 @@ public class Treegame {
 	private JButton resetButton;
 	
 	
+	/**
+	 * Les différents label qui permettent d'exprimer les différentes
+	 * propriétés des arbres.
+	 */
+	
 	private JLabel heightLabel;
 	private JLabel sizeLabel;
 	private JLabel distanceLabel;
 	
+	
+	
+	
+	
+	private JTabbedPane tabbedPane; // NOUVEAU
+		
+	/**
+	 * Deux panel
+	 * propriétés des arbres.
+	 */
 	private BSTPanel bstPanel;
 	private AVLPanel avlPanel;
 	
@@ -55,6 +79,18 @@ public class Treegame {
 	
 	private JCheckBox stepModeCheckBox;   // NOUVEAU
 	private JButton nextStepButton;       // NOUVEAU
+	
+	
+	
+	private JButton preorderButton;
+	private JButton inorderButton;
+	private JButton postorderButton;
+	private JButton levelOrderButton;
+	
+	
+	
+	
+	
 	
 	
 	// CONSTRUCTEURS
@@ -69,13 +105,21 @@ public class Treegame {
 		 this.heightLabel = new JLabel("Hauteur : 0");
 		 this.sizeLabel = new JLabel("Taille : 0");
 		 this.distanceLabel = new JLabel("Distance : 0");
+		 this.tabbedPane = new StyledTabbedPane();
 		 this.bstPanel = new BSTPanel();
 		 this.avlPanel = new AVLPanel();
+		 avlPanel.setStateListener(() -> { // NOUVEAU
+			    refresh();
+			    updateStepButtonState();
+			});
 		 this.stepModeCheckBox = new StyledCheckBox("Pas à pas");           // NOUVEAU
 		 this.nextStepButton = new StyledButton("Suivant");             // NOUVEAU
 		 this.nextStepButton.setEnabled(false);        
 		 this.animationCheckBox = new StyledCheckBox("Mode animation");
-		 
+		 this.preorderButton = new StyledButton("Parcours préfixe");
+		 this.inorderButton = new StyledButton("Parcours infixe");
+		 this.postorderButton = new StyledButton("Parcours postfixe");
+		 this.levelOrderButton = new StyledButton("Parcours en largeur");
 		 placeComponents();
 		 connectControllers();
 	}
@@ -108,11 +152,23 @@ public class Treegame {
                 q.add(resetButton);
         	} //--
         	p.add(q,BorderLayout.NORTH);
-        	q = new JPanel();
+        	q = new JPanel(new BorderLayout());
         	{ //--
-        		q.add(animationCheckBox);	
-        	    q.add(stepModeCheckBox);   // NOUVEAU
-        	    q.add(nextStepButton);      // NOUVEAU
+        		JPanel r = new JPanel();
+        		{ //--
+        		    r.add(preorderButton);
+        		    r.add(inorderButton);
+        		    r.add(postorderButton);
+        		    r.add(levelOrderButton);
+        		} //--
+        		q.add(r,BorderLayout.NORTH);
+        		r = new JPanel();
+        		{ //--
+            		r.add(animationCheckBox);	
+            	    r.add(stepModeCheckBox);   // NOUVEAU
+            	    r.add(nextStepButton);      // NOUVEAU
+        		} //--
+        		q.add(r,BorderLayout.SOUTH);
         	} //--
         	p.add(q,BorderLayout.CENTER);
         	q = new JPanel();
@@ -124,74 +180,86 @@ public class Treegame {
         	p.add(q,BorderLayout.SOUTH);
         } //--
         frame.add(p, BorderLayout.NORTH);
-        JTabbedPane q = new StyledTabbedPane() ;
+        tabbedPane = new StyledTabbedPane() ;
         {//--
-        	q.addTab("ABR",bstPanel);
-        	q.addTab("AVL",avlPanel);
+        	tabbedPane.addTab("ABR",bstPanel);
+        	tabbedPane.addTab("AVL",avlPanel);
         }//--
-        frame.add(q,BorderLayout.CENTER);
+        frame.add(tabbedPane,BorderLayout.CENTER);
     } 
 	
     private void connectControllers() {
     	addButton.addActionListener(new ActionListener() {
-
-			@Override
-			public void actionPerformed(ActionEvent arg0) {
-				String vs = JOptionPane.showInputDialog(null,"Entrez la valeur.");
-				if(vs != null) {
-					System.out.println("La valeur entré est : " + Integer.parseInt(vs));
-					bstPanel.addInt(Integer.parseInt(vs));
-					avlPanel.addInt(Integer.parseInt(vs));
-					updateStepButtonState();
-					refresh();
-				}
-			}
-    		
+    	    @Override
+    	    public void actionPerformed(ActionEvent arg0) {
+    	        String vs = JOptionPane.showInputDialog(null, "Entrez la valeur.");
+    	        if (vs != null) {
+    	            int v = Integer.parseInt(vs);
+    	            bstPanel.addInt(v, () -> { // MODIFIÉ
+    	                refresh();
+    	                updateStepButtonState();
+    	            });
+    	            avlPanel.addInt(v, () -> { // MODIFIÉ
+    	                refresh();
+    	                updateStepButtonState();
+    	            });
+    	            updateStepButtonState();
+    	            refresh();
+    	        }
+    	    }
     	});
     	
     	deleteButton.addActionListener(new ActionListener() {
-
-			@Override
-			public void actionPerformed(ActionEvent arg0) {
-				String vs = JOptionPane.showInputDialog(null,"Entrez la valeur.");
-				if(vs != null) {
-					System.out.println("La valeur entré est : " + Integer.parseInt(vs));
-					bstPanel.deleteInt(Integer.parseInt(vs));
-					avlPanel.deleteInt(Integer.parseInt(vs));
-					updateStepButtonState();
-					refresh();
-				}
-			}
-    		
+    	    @Override
+    	    public void actionPerformed(ActionEvent arg0) {
+    	        String vs = JOptionPane.showInputDialog(null, "Entrez la valeur.");
+    	        if (vs != null) {
+    	            int v = Integer.parseInt(vs);
+    	            bstPanel.deleteInt(v, () -> { // MODIFIÉ
+    	                refresh();
+    	                updateStepButtonState();
+    	            });
+    	            avlPanel.deleteInt(v, () -> { // MODIFIÉ
+    	                refresh();
+    	                updateStepButtonState();
+    	            });
+    	            updateStepButtonState();
+    	            refresh();
+    	        }
+    	    }
     	});
     	
-     	searchButton.addActionListener(new ActionListener() {
-
-			@Override
-			public void actionPerformed(ActionEvent arg0) {
-				String vs = JOptionPane.showInputDialog(null,"Entrez la valeur.");
-				if(vs != null) {
-					System.out.println("La valeur entré est : " + Integer.parseInt(vs));
-					bstPanel.deleteInt(Integer.parseInt(vs));
-					avlPanel.deleteInt(Integer.parseInt(vs));
-				}
-			}
-    		
+    	searchButton.addActionListener(new ActionListener() {
+    	    @Override
+    	    public void actionPerformed(ActionEvent arg0) {
+    	        String vs = JOptionPane.showInputDialog(null, "Entrez la valeur.");
+    	        if (vs != null) {
+    	            int v = Integer.parseInt(vs);
+    	            bstPanel.searchInt(v, () -> {
+    	                refresh();
+    	                updateStepButtonState();
+    	            });
+    	            avlPanel.searchInt(v, () -> {
+    	                refresh();
+    	                updateStepButtonState();
+    	            });
+    	            updateStepButtonState();
+    	        }
+    	    }
     	});
      	
-     	generateButton.addActionListener(new ActionListener() {
-
-			@Override
-			public void actionPerformed(ActionEvent arg0) {
-				for(int i = 0; i < GEN_NUMBER; i++) {
-					int r = getRandom(GEN_MIN,GEN_MAX);
-					bstPanel.addInt(r);
-					avlPanel.addInt(r);
-				}
-				refresh();
-			}
-     		
-     	});
+    	generateButton.addActionListener(new ActionListener() {
+    	    @Override
+    	    public void actionPerformed(ActionEvent arg0) {
+    	        animationCheckBox.setSelected(false);      // NOUVEAU
+    	        stepModeCheckBox.setSelected(false);        // NOUVEAU
+    	        bstPanel.setAnimationMode(false);            // NOUVEAU
+    	        avlPanel.setAnimationMode(false);            // NOUVEAU
+    	        bstPanel.setStepMode(false);                 // NOUVEAU
+    	        avlPanel.setStepMode(false);                 // NOUVEAU
+    	        generateSequential(GEN_NUMBER);
+    	    }
+    	});
      	
      	resetButton.addActionListener(new ActionListener() {
 
@@ -199,6 +267,8 @@ public class Treegame {
 			public void actionPerformed(ActionEvent arg0) {
 				bstPanel.getModel().setRoot(null);
 				bstPanel.repaint();
+				avlPanel.getModel().setRoot(null);
+				avlPanel.repaint();
 				refresh();
 			}
      		
@@ -220,7 +290,7 @@ public class Treegame {
      	    public void actionPerformed(ActionEvent arg0) {
      	        boolean enabled = stepModeCheckBox.isSelected();
      	        bstPanel.setStepMode(enabled);
-     	        //avlPanel.setStepMode(enabled);
+     	        avlPanel.setStepMode(enabled);
      	    }
      	});
 
@@ -228,19 +298,44 @@ public class Treegame {
      	    @Override
      	    public void actionPerformed(ActionEvent arg0) {
      	        bstPanel.nextStep();
-     	        //avlPanel.nextStep();
+     	        avlPanel.nextStep();
      	        //updateStats();
      	        updateStepButtonState(); // NOUVEAU
      	    }
      	});
+     	
+     	tabbedPane.addChangeListener(e -> refresh()); // NOUVEAU
+     	
+     	preorderButton.addActionListener(e -> {
+     	    bstPanel.traversePreorder(() -> { refresh(); updateStepButtonState(); });
+     	    avlPanel.traversePreorder(() -> { refresh(); updateStepButtonState(); });
+     	    updateStepButtonState();
+     	});
+     	inorderButton.addActionListener(e -> {
+     	    bstPanel.traverseInorder(() -> { refresh(); updateStepButtonState(); });
+     	    avlPanel.traverseInorder(() -> { refresh(); updateStepButtonState(); });
+     	    updateStepButtonState();
+     	});
+     	postorderButton.addActionListener(e -> {
+     	    bstPanel.traversePostorder(() -> { refresh(); updateStepButtonState(); });
+     	    avlPanel.traversePostorder(() -> { refresh(); updateStepButtonState(); });
+     	    updateStepButtonState();
+     	});
+     	levelOrderButton.addActionListener(e -> {
+     	    bstPanel.traverseLevelOrder(() -> { refresh(); updateStepButtonState(); });
+     	    avlPanel.traverseLevelOrder(() -> { refresh(); updateStepButtonState(); });
+     	    updateStepButtonState();
+     	});
     }
     
     private void refresh() {
-        heightLabel.setText("Hauteur : " + bstPanel.getModel().getHeight());
-        sizeLabel.setText("Taille : " + bstPanel.getModel().getSize());
-        distanceLabel.setText("Distance : " + bstPanel.getModel().getDistance());
+        BSTTree<?, Integer> model = (tabbedPane.getSelectedIndex() == 0)
+                ? bstPanel.getModel()
+                : avlPanel.getModel();
+        heightLabel.setText("Hauteur : " + model.getHeight());
+        sizeLabel.setText("Taille : " + model.getSize());
+        distanceLabel.setText("Distance : " + model.getDistance());
     }
-	
 	
 	private static int getRandom(int min, int max) {
 		int range = (max - min) + 1;
@@ -249,9 +344,30 @@ public class Treegame {
 	}
 	
 	
-	private void updateStepButtonState() { // NOUVEAU
-	    boolean animating = bstPanel.isAnimating();
+	private void updateStepButtonState() {
+	    boolean animating = bstPanel.isAnimating() || avlPanel.isAnimating();
+	    boolean busy = bstPanel.isBusy() || avlPanel.isBusy();
 	    nextStepButton.setEnabled(animating);
+	    addButton.setEnabled(!busy);
+	    deleteButton.setEnabled(!busy);
+	    generateButton.setEnabled(!busy);
+	    animationCheckBox.setEnabled(!busy);  // NOUVEAU
+	    stepModeCheckBox.setEnabled(!busy);   // NOUVEAU
+	}
+	
+	private void generateSequential(int remaining) { // NOUVEAU
+	    if (remaining <= 0) {
+	        refresh();
+	        updateStepButtonState();
+	        return;
+	    }
+	    int r = getRandom(GEN_MIN, GEN_MAX);
+	    bstPanel.addInt(r, () -> {
+	        avlPanel.addInt(r, () -> {
+	            generateSequential(remaining - 1); // on n'enchaîne qu'une fois les DEUX terminés
+	        });
+	    });
+	    updateStepButtonState();
 	}
 	
 	// POINT D'ENTREE

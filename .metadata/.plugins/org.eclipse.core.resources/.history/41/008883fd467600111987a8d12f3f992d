@@ -1,0 +1,8 @@
+package node;
+
+public interface AVLNode<N extends AVLNode<N,T>,T> extends ValuedNode<N, T> {
+	
+	public int getHeight();
+	
+	
+}

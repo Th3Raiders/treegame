@@ -1,0 +1,16 @@
+package node;
+
+public interface ValuedNode<N extends ValuedNode<N, T>, T> extends Node<N> {
+	
+
+	// REQUETES
+
+	public T getValue();
+
+	// COMMANDES
+
+	void setValeur(T v);
+
+	
+	
+}

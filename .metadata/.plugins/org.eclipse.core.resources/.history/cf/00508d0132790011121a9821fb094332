@@ -1,0 +1,701 @@
+package binarytree;
+
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.awt.event.MouseWheelEvent;
+import java.awt.geom.Point2D;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.swing.JPanel;
+import javax.swing.Timer;
+
+import node.StdAVLNode;
+import tree.BSTTree;
+import tree.StdAVLTree;
+
+public class AVLPanel extends JPanel {
+
+	// ATTRIBUTS DE BASE
+
+	private static final int NODE_DIAMETER = 30;
+	private static final int VERTICAL_GAP = 60;
+	private static final int HORIZONTAL_GAP = 40;
+
+	private static final int SEARCH_STEP_MS = 900;
+	private static final int TRANSITION_DURATION_MS = 1200;
+	private static final int HOLD_DURATION_MS = 1600;
+	private static final int TRANSITION_FPS = 60;
+
+	private double scale = 1.0;
+	private double offsetX = 0;
+	private double offsetY = 0;
+
+	private int lastMouseX;
+	private int lastMouseY;
+
+	private BSTTree<StdAVLNode<Integer>, Integer> model =
+			new StdAVLTree<StdAVLNode<Integer>, Integer>(Comparator.naturalOrder(), StdAVLNode::new);
+
+	private final Map<StdAVLNode<Integer>, Point2D.Double> positions = new IdentityHashMap<>();
+	private int inorderCounter;
+
+	private boolean animationMode = false;
+	private Integer highlightedValue = null;
+	private Integer replacementValue = null;
+
+	private boolean transitioning = false;
+	private double currentT = 0;
+	private Map<StdAVLNode<Integer>, Point2D.Double> animStart = null;
+	private Map<StdAVLNode<Integer>, Point2D.Double> animEnd = null;
+
+	private boolean busy = false;
+	private String infoMessage = null;
+
+	// NOUVEAU : pas-à-pas
+	private boolean stepMode = false;
+	private Runnable pendingContinuation = null;
+
+	
+	private Runnable stateListener = null; // NOUVEAU
+	
+	// CONSTRUCTEURS
+	public AVLPanel() {
+		setupNavigation();
+		setBackground();
+	}
+
+	// REQUETES
+
+	public BSTTree<StdAVLNode<Integer>, Integer> getModel() {
+		return model;
+	}
+
+	public boolean isBusy() {
+		return busy;
+	}
+
+	public boolean searchInt(Integer i) {
+		return model.isIn(i);
+	}
+
+	// NOUVEAU : le bouton "Suivant" appelle ceci
+	public void nextStep() {
+		if (pendingContinuation == null) {
+			return;
+		}
+		Runnable r = pendingContinuation;
+		pendingContinuation = null;
+		r.run();
+	}
+
+	// NOUVEAU : vrai tant qu'on attend un clic sur "Suivant"
+	public boolean isAnimating() {
+		return pendingContinuation != null;
+	}
+
+	// NOUVEAU
+	public void setStepMode(boolean enabled) {
+		this.stepMode = enabled;
+	}
+
+	// ================== MOTEUR D'ANIMATION PAS À PAS ==================
+
+	private interface AnimStep {
+		void run(Runnable onDone);
+	}
+
+	private class HighlightStep implements AnimStep {
+		private final int value;
+		private final int pauseMs;
+		private final String message;
+
+		HighlightStep(int value, int pauseMs, String message) {
+			this.value = value;
+			this.pauseMs = pauseMs;
+			this.message = message;
+		}
+
+		@Override
+		public void run(Runnable onDone) {
+			highlightedValue = value;
+			infoMessage = message;
+			repaint();
+			if (stepMode) { // NOUVEAU : on attend le clic au lieu d'un délai automatique
+				onDone.run();
+			} else {
+				Timer t = new Timer(pauseMs, e -> {
+					((Timer) e.getSource()).stop();
+					onDone.run();
+				});
+				t.setRepeats(false);
+				t.start();
+			}
+		}
+	}
+
+	private class TransitionStep implements AnimStep {
+		private final Map<StdAVLNode<Integer>, Point2D.Double> from;
+		private final Map<StdAVLNode<Integer>, Point2D.Double> to;
+		private final String message;
+		private final int durationMs;
+		private final int holdMs;
+
+		TransitionStep(Map<StdAVLNode<Integer>, Point2D.Double> from,
+				Map<StdAVLNode<Integer>, Point2D.Double> to,
+				String message, int durationMs, int holdMs) {
+			this.from = from;
+			this.to = to;
+			this.message = message;
+			this.durationMs = durationMs;
+			this.holdMs = holdMs;
+		}
+
+		@Override
+		public void run(Runnable onDone) {
+			infoMessage = message;
+			highlightedValue = null;
+			animStart = from;
+			animEnd = to;
+			transitioning = true;
+			currentT = 0;
+
+			long startTime = System.currentTimeMillis();
+			Timer timer = new Timer(1000 / TRANSITION_FPS, null);
+			timer.addActionListener(e -> {
+				long elapsed = System.currentTimeMillis() - startTime;
+				currentT = Math.min(1.0, elapsed / (double) durationMs);
+				repaint();
+				if (currentT >= 1.0) {
+					((Timer) e.getSource()).stop();
+					transitioning = false;
+					positions.clear();
+					positions.putAll(to);
+					repaint();
+
+					if (stepMode) { // NOUVEAU : le message reste affiché jusqu'au prochain clic
+						onDone.run();
+					} else {
+						Timer hold = new Timer(holdMs, ev -> {
+							((Timer) ev.getSource()).stop();
+							infoMessage = null;
+							repaint();
+							onDone.run();
+						});
+						hold.setRepeats(false);
+						hold.start();
+					}
+				}
+			});
+			timer.start();
+		}
+	}
+
+	// MODIFIÉ : gère maintenant le mode pas-à-pas
+	private void runQueue(Deque<AnimStep> queue, Runnable onAllDone) {
+	    if (queue.isEmpty()) {
+	        onAllDone.run();
+	        return;
+	    }
+	    AnimStep step = queue.poll();
+	    step.run(() -> {
+	        if (stepMode && !queue.isEmpty()) { // MODIFIÉ : seulement s'il reste une étape à venir
+	            pendingContinuation = () -> runQueue(queue, onAllDone);
+	        } else {
+	            runQueue(queue, onAllDone); // termine immédiatement si c'était la dernière étape
+	        }
+	    });
+	}
+
+	private void appendRebalanceSteps(Deque<AnimStep> queue, List<StdAVLNode<Integer>> chain) {
+		for (int i = 0; i < chain.size(); i++) {
+			final StdAVLNode<Integer> node = chain.get(i);
+			final StdAVLNode<Integer> parent = (i + 1 < chain.size()) ? chain.get(i + 1) : null;
+
+			queue.add(new AnimStep() {
+				@Override
+				public void run(Runnable onDone) {
+					Map<StdAVLNode<Integer>, Point2D.Double> before = snapshotLayout();
+
+					updateHeight(node);
+					int bf = balanceFactor(node);
+					StdAVLNode<Integer> newLocalRoot = node;
+					String message = null;
+
+					if (bf > 1) {
+						if (balanceFactor(node.getLeft()) < 0) {
+							message = "Rotation double Gauche-Droite sur le nœud " + node.getValue()
+									+ " (facteur = " + bf + " : trop lourd à gauche, "
+									+ "et l'enfant gauche penche lui-même à droite)";
+							node.setLeft(rotateLeft(node.getLeft()));
+							newLocalRoot = rotateRight(node);
+						} else {
+							message = "Rotation simple à droite sur le nœud " + node.getValue()
+									+ " (facteur = " + bf + " : trop lourd à gauche)";
+							newLocalRoot = rotateRight(node);
+						}
+					} else if (bf < -1) {
+						if (balanceFactor(node.getRight()) > 0) {
+							message = "Rotation double Droite-Gauche sur le nœud " + node.getValue()
+									+ " (facteur = " + bf + " : trop lourd à droite, "
+									+ "et l'enfant droit penche lui-même à gauche)";
+							node.setRight(rotateRight(node.getRight()));
+							newLocalRoot = rotateLeft(node);
+						} else {
+							message = "Rotation simple à gauche sur le nœud " + node.getValue()
+									+ " (facteur = " + bf + " : trop lourd à droite)";
+							newLocalRoot = rotateLeft(node);
+						}
+					}
+
+					if (newLocalRoot == node) {
+					    infoMessage = "Le nœud " + node.getValue() + " reste équilibré (facteur = " + bf + ")"; // NOUVEAU
+					    repaint(); // NOUVEAU
+						onDone.run();
+						return;
+					}
+
+					if (parent == null) {
+						model.setRoot(newLocalRoot);
+					} else if (parent.getLeft() == node) {
+						parent.setLeft(newLocalRoot);
+					} else {
+						parent.setRight(newLocalRoot);
+					}
+
+					Map<StdAVLNode<Integer>, Point2D.Double> after = snapshotLayout();
+					new TransitionStep(before, after, message, TRANSITION_DURATION_MS, HOLD_DURATION_MS).run(onDone);
+				}
+			});
+		}
+	}
+
+	// ================== COMMANDES PRINCIPALES ==================
+
+	public void addInt(Integer v, Runnable onFinished) { // NOUVEAU
+		if (busy) {
+			return;
+		}
+		if (!animationMode) {
+			model.add(v);
+			repaint();
+			if (onFinished != null) {
+				onFinished.run();
+			}
+			return;
+		}
+		if (model.isIn(v)) {
+			if (onFinished != null) {
+				onFinished.run();
+			}
+			return;
+		}
+
+		busy = true;
+		Deque<AnimStep> queue = new ArrayDeque<>();
+		Comparator<Integer> cmp = model.getComparator();
+
+		List<StdAVLNode<Integer>> ancestors = new ArrayList<>();
+		StdAVLNode<Integer> current = model.getRoot();
+		while (current != null) {
+			ancestors.add(current);
+			current = (cmp.compare(v, current.getValue()) < 0) ? current.getLeft() : current.getRight();
+		}
+		for (StdAVLNode<Integer> a : ancestors) {
+			queue.add(new HighlightStep(a.getValue(), SEARCH_STEP_MS,
+					"Descente : comparaison de " + v + " avec " + a.getValue()));
+		}
+
+		queue.add(new AnimStep() {
+			@Override
+			public void run(Runnable onDone) {
+				Map<StdAVLNode<Integer>, Point2D.Double> before = snapshotLayout();
+				StdAVLNode<Integer> leaf = new StdAVLNode<>(v);
+				if (ancestors.isEmpty()) {
+					model.setRoot(leaf);
+				} else {
+					StdAVLNode<Integer> parent = ancestors.get(ancestors.size() - 1);
+					if (cmp.compare(v, parent.getValue()) < 0) {
+						parent.setLeft(leaf);
+					} else {
+						parent.setRight(leaf);
+					}
+				}
+				Map<StdAVLNode<Integer>, Point2D.Double> after = snapshotLayout();
+				new TransitionStep(before, after, "Insertion du nœud " + v + " en tant que feuille",
+						TRANSITION_DURATION_MS, HOLD_DURATION_MS).run(onDone);
+			}
+		});
+
+		List<StdAVLNode<Integer>> chain = new ArrayList<>(ancestors);
+		Collections.reverse(chain);
+		appendRebalanceSteps(queue, chain);
+
+		runQueue(queue, () -> {
+			busy = false;
+			highlightedValue = null;
+			replacementValue = null;
+			infoMessage = null;
+			repaint();
+			if (onFinished != null) { // NOUVEAU
+				onFinished.run();
+			}
+		});
+	}
+
+
+	public void deleteInt(Integer v, Runnable onFinished) { // NOUVEAU
+		if (busy) {
+			return;
+		}
+		if (!animationMode) {
+			model.delete(v);
+			repaint();
+			if (onFinished != null) {
+				onFinished.run();
+			}
+			return;
+		}
+		if (!model.isIn(v)) {
+			if (onFinished != null) {
+				onFinished.run();
+			}
+			return;
+		}
+
+		busy = true;
+		Deque<AnimStep> queue = new ArrayDeque<>();
+		Comparator<Integer> cmp = model.getComparator();
+
+		List<StdAVLNode<Integer>> ancestorsToNode = new ArrayList<>();
+		StdAVLNode<Integer> current = model.getRoot();
+		while (current != null) {
+			ancestorsToNode.add(current);
+			int c = cmp.compare(v, current.getValue());
+			if (c == 0) {
+				break;
+			}
+			current = (c < 0) ? current.getLeft() : current.getRight();
+		}
+		for (StdAVLNode<Integer> a : ancestorsToNode) {
+			queue.add(new HighlightStep(a.getValue(), SEARCH_STEP_MS,
+					"Recherche du nœud " + v + " : comparaison avec " + a.getValue()));
+		}
+
+		final StdAVLNode<Integer> target = ancestorsToNode.get(ancestorsToNode.size() - 1);
+
+		if (target.getLeft() == null || target.getRight() == null) {
+			queue.add(new AnimStep() {
+				@Override
+				public void run(Runnable onDone) {
+					Map<StdAVLNode<Integer>, Point2D.Double> before = snapshotLayout();
+					StdAVLNode<Integer> replacement = (target.getLeft() != null) ? target.getLeft() : target.getRight();
+					StdAVLNode<Integer> targetParent =
+							ancestorsToNode.size() >= 2 ? ancestorsToNode.get(ancestorsToNode.size() - 2) : null;
+					if (targetParent == null) {
+						model.setRoot(replacement);
+					} else if (targetParent.getLeft() == target) {
+						targetParent.setLeft(replacement);
+					} else {
+						targetParent.setRight(replacement);
+					}
+					Map<StdAVLNode<Integer>, Point2D.Double> after = snapshotLayout();
+					new TransitionStep(before, after, "Suppression du nœud " + v + " (0 ou 1 enfant)",
+							TRANSITION_DURATION_MS, HOLD_DURATION_MS).run(onDone);
+				}
+			});
+
+			List<StdAVLNode<Integer>> chain =
+					new ArrayList<>(ancestorsToNode.subList(0, ancestorsToNode.size() - 1));
+			Collections.reverse(chain);
+			appendRebalanceSteps(queue, chain);
+
+		} else {
+			List<StdAVLNode<Integer>> pathToSuccessor = new ArrayList<>();
+			StdAVLNode<Integer> succ = target.getRight();
+			pathToSuccessor.add(succ);
+			while (succ.getLeft() != null) {
+				succ = succ.getLeft();
+				pathToSuccessor.add(succ);
+			}
+			final StdAVLNode<Integer> successor = succ;
+			replacementValue = successor.getValue();
+
+			for (StdAVLNode<Integer> a : pathToSuccessor) {
+				queue.add(new HighlightStep(a.getValue(), SEARCH_STEP_MS,
+						"Recherche du successeur (plus petit du sous-arbre droit) : on descend à gauche vers " + a.getValue()));
+			}
+
+			queue.add(new AnimStep() {
+				@Override
+				public void run(Runnable onDone) {
+					Map<StdAVLNode<Integer>, Point2D.Double> before = snapshotLayout();
+					int successorValue = successor.getValue();
+					target.setValue(successorValue);
+					StdAVLNode<Integer> succReplacement = successor.getRight();
+					StdAVLNode<Integer> succParent = pathToSuccessor.size() >= 2
+							? pathToSuccessor.get(pathToSuccessor.size() - 2)
+							: target;
+					if (succParent.getLeft() == successor) {
+						succParent.setLeft(succReplacement);
+					} else {
+						succParent.setRight(succReplacement);
+					}
+					Map<StdAVLNode<Integer>, Point2D.Double> after = snapshotLayout();
+					new TransitionStep(before, after,
+							"Le nœud " + v + " a deux enfants : on le remplace par son successeur " + successorValue,
+							TRANSITION_DURATION_MS, HOLD_DURATION_MS).run(onDone);
+				}
+			});
+
+			List<StdAVLNode<Integer>> chain = new ArrayList<>();
+			List<StdAVLNode<Integer>> succAncestorsExcludingSucc =
+					new ArrayList<>(pathToSuccessor.subList(0, pathToSuccessor.size() - 1));
+			Collections.reverse(succAncestorsExcludingSucc);
+			chain.addAll(succAncestorsExcludingSucc);
+			chain.add(target);
+			List<StdAVLNode<Integer>> aboveTarget =
+					new ArrayList<>(ancestorsToNode.subList(0, ancestorsToNode.size() - 1));
+			Collections.reverse(aboveTarget);
+			chain.addAll(aboveTarget);
+
+			appendRebalanceSteps(queue, chain);
+		}
+
+		runQueue(queue, () -> {
+			busy = false;
+			highlightedValue = null;
+			replacementValue = null;
+			infoMessage = null;
+			repaint();
+			if (onFinished != null) { // NOUVEAU
+				onFinished.run();
+			}
+		});
+	}
+
+	// ================== OUTILS AVL (répliques exactes de StdAVLTree) ==================
+
+	private int height(StdAVLNode<Integer> n) {
+		return (n == null) ? 0 : n.getHeight();
+	}
+
+	private void updateHeight(StdAVLNode<Integer> n) {
+		n.setHeight(1 + Math.max(height(n.getLeft()), height(n.getRight())));
+	}
+
+	private int balanceFactor(StdAVLNode<Integer> n) {
+		return (n == null) ? 0 : height(n.getLeft()) - height(n.getRight());
+	}
+
+	private StdAVLNode<Integer> rotateRight(StdAVLNode<Integer> node) {
+		StdAVLNode<Integer> pivot = node.getLeft();
+		node.setLeft(pivot.getRight());
+		pivot.setRight(node);
+		updateHeight(node);
+		updateHeight(pivot);
+		return pivot;
+	}
+
+	private StdAVLNode<Integer> rotateLeft(StdAVLNode<Integer> node) {
+		StdAVLNode<Integer> pivot = node.getRight();
+		node.setRight(pivot.getLeft());
+		pivot.setLeft(node);
+		updateHeight(node);
+		updateHeight(pivot);
+		return pivot;
+	}
+
+	// ================== DISPOSITION / RENDU ==================
+
+	private Map<StdAVLNode<Integer>, Point2D.Double> snapshotLayout() {
+		Map<StdAVLNode<Integer>, Point2D.Double> snapshot = new IdentityHashMap<>();
+		inorderCounter = 0;
+		snapshotLayoutAux(model.getRoot(), 0, snapshot);
+		return snapshot;
+	}
+
+	private void snapshotLayoutAux(StdAVLNode<Integer> node, int depth, Map<StdAVLNode<Integer>, Point2D.Double> target) {
+		if (node == null) {
+			return;
+		}
+		snapshotLayoutAux(node.getLeft(), depth + 1, target);
+		double x = inorderCounter * HORIZONTAL_GAP + 40;
+		double y = depth * VERTICAL_GAP + 40;
+		target.put(node, new Point2D.Double(x, y));
+		inorderCounter++;
+		snapshotLayoutAux(node.getRight(), depth + 1, target);
+	}
+
+	private Point2D.Double interpolatedPosition(StdAVLNode<Integer> node) {
+		Point2D.Double end = animEnd.get(node);
+		Point2D.Double start = animStart.get(node);
+		if (start == null) {
+			start = end;
+		}
+		double x = start.x + (end.x - start.x) * currentT;
+		double y = start.y + (end.y - start.y) * currentT;
+		return new Point2D.Double(x, y);
+	}
+
+	@Override
+	protected void paintComponent(Graphics g) {
+		super.paintComponent(g);
+		Graphics2D overlay = (Graphics2D) g.create();
+
+		Graphics2D g2 = (Graphics2D) g;
+		g2.translate(offsetX, offsetY);
+		g2.scale(scale, scale);
+
+		StdAVLNode<Integer> root = model.getRoot();
+		if (root != null) {
+			if (transitioning) {
+				drawTreeInterpolated(g2, root);
+			} else {
+				positions.clear();
+				inorderCounter = 0;
+				snapshotLayoutAux(root, 0, positions);
+				drawTree(g2, root);
+			}
+		}
+
+		drawInfoMessage(overlay);
+		overlay.dispose();
+	}
+
+	private void drawTree(Graphics g, StdAVLNode<Integer> node) {
+		Point2D.Double p = positions.get(node);
+
+		if (node.getLeft() != null) {
+			Point2D.Double childP = positions.get(node.getLeft());
+			g.drawLine((int) p.x, (int) p.y, (int) childP.x, (int) childP.y);
+			drawTree(g, node.getLeft());
+		}
+		if (node.getRight() != null) {
+			Point2D.Double childP = positions.get(node.getRight());
+			g.drawLine((int) p.x, (int) p.y, (int) childP.x, (int) childP.y);
+			drawTree(g, node.getRight());
+		}
+
+		drawNodeCircle(g, node, p);
+	}
+
+	private void drawTreeInterpolated(Graphics g, StdAVLNode<Integer> node) {
+		Point2D.Double p = interpolatedPosition(node);
+
+		if (node.getLeft() != null) {
+			Point2D.Double childP = interpolatedPosition(node.getLeft());
+			g.drawLine((int) p.x, (int) p.y, (int) childP.x, (int) childP.y);
+			drawTreeInterpolated(g, node.getLeft());
+		}
+		if (node.getRight() != null) {
+			Point2D.Double childP = interpolatedPosition(node.getRight());
+			g.drawLine((int) p.x, (int) p.y, (int) childP.x, (int) childP.y);
+			drawTreeInterpolated(g, node.getRight());
+		}
+
+		drawNodeCircle(g, node, p);
+	}
+
+	private void drawNodeCircle(Graphics g, StdAVLNode<Integer> node, Point2D.Double p) {
+		String s = String.valueOf(node.getValue());
+		FontMetrics fm = g.getFontMetrics();
+		int strWidth = fm.stringWidth(s);
+		int diameter = Math.max(NODE_DIAMETER, strWidth + 16);
+
+		if (replacementValue != null && replacementValue.equals(node.getValue())) {
+			g.setColor(Color.GREEN);
+		} else if (highlightedValue != null && highlightedValue.equals(node.getValue())) {
+			g.setColor(Color.RED);
+		} else {
+			g.setColor(Color.WHITE);
+		}
+		g.fillOval((int) p.x - diameter / 2, (int) p.y - diameter / 2, diameter, diameter);
+		g.setColor(Color.BLACK);
+		g.drawOval((int) p.x - diameter / 2, (int) p.y - diameter / 2, diameter, diameter);
+
+		g.drawString(s, (int) p.x - strWidth / 2, (int) p.y + fm.getAscent() / 2 - 2);
+	}
+
+	private void drawInfoMessage(Graphics2D g) {
+		if (infoMessage == null) {
+			return;
+		}
+		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		g.setFont(new Font("Segoe UI", Font.BOLD, 14));
+		FontMetrics fm = g.getFontMetrics();
+		int textWidth = fm.stringWidth(infoMessage);
+		int boxWidth = textWidth + 24;
+		int boxHeight = 34;
+		int x = 12;
+		int y = 12;
+
+		g.setColor(new Color(20, 20, 20, 230));
+		g.fillRoundRect(x, y, boxWidth, boxHeight, 12, 12);
+		g.setColor(Color.WHITE);
+		g.drawString(infoMessage, x + 12, y + boxHeight - 12);
+	}
+
+	// ================== NAVIGATION (pan & zoom) ==================
+
+	private void setupNavigation() {
+		addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				lastMouseX = e.getX();
+				lastMouseY = e.getY();
+			}
+		});
+
+		addMouseMotionListener(new MouseMotionAdapter() {
+			@Override
+			public void mouseDragged(MouseEvent e) {
+				offsetX += e.getX() - lastMouseX;
+				offsetY += e.getY() - lastMouseY;
+				lastMouseX = e.getX();
+				lastMouseY = e.getY();
+				repaint();
+			}
+		});
+
+		addMouseWheelListener(this::handleZoom);
+	}
+
+	private void handleZoom(MouseWheelEvent e) {
+		double zoomFactor = (e.getWheelRotation() < 0) ? 1.1 : 0.9;
+		double mouseX = e.getX();
+		double mouseY = e.getY();
+		offsetX = mouseX - (mouseX - offsetX) * zoomFactor;
+		offsetY = mouseY - (mouseY - offsetY) * zoomFactor;
+		scale *= zoomFactor;
+		repaint();
+	}
+
+	public void resetView() {
+		scale = 1.0;
+		offsetX = 0;
+		offsetY = 0;
+		repaint();
+	}
+
+	public void setBackground() {
+		this.setBackground(Color.WHITE);
+	}
+
+	public void setAnimationMode(boolean enabled) {
+		this.animationMode = enabled;
+	}
+}

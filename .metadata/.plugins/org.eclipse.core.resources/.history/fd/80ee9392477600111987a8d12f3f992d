@@ -1,0 +1,7 @@
+package tree;
+
+import node.ValuedNode;
+
+public class StdAVLTree<N extends AVLNode<N, T>, T> extends StdBSTTree<N, T> implements BSTTree<N, T> {
+
+}

@@ -1,0 +1,29 @@
+package binarytree;
+
+import java.util.Comparator;
+
+import node.Node;
+import node.StdAVLNode;
+import node.StdValuedNode;
+import tree.BSTTree;
+import tree.StdAVLTree;
+import tree.StdBSTTree;
+import tree.StdTree;
+import tree.Tree;
+
+public class Pdt {
+	    public static void main(String[] args) {
+	    	
+	    	{
+	    		
+	    		BSTTree<StdAVLNode<Integer>, Integer> tavl =  new StdAVLTree<StdAVLNode<Integer>, Integer>(Comparator.naturalOrder(),StdAVLNode::new);
+	    		for(int i = 0; i < 10; i++) {
+	    			tavl.add(0 + (int)(Math.random() * ((50 - 0) + 1)));
+	    		}
+	    		
+	    		tavl.printTree();
+	    		
+	    		System.out.println(tavl.getRoot().getHeight());
+	    	}
+	    }
+}

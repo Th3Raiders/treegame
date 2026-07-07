@@ -1,0 +1,31 @@
+package binarytree;
+
+public interface Node {
+	
+	
+    // REQUETES
+    
+    /**
+     * Le sous arbre gauche.
+     */
+	public Node getLeft();
+	
+	
+    /**
+     * Le sous arbre droit.
+     */
+	public Node getRight();
+	
+	// COMMANDES
+	
+	
+    /**
+     * Changer le sous arbre gauche.
+     */
+	public void setLeft(Node n);
+	
+    /**
+     * Changer le sous arbre droit.
+     */
+	public void setRight(Node n);
+}

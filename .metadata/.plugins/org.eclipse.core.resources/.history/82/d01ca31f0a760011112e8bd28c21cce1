@@ -1,0 +1,20 @@
+package tree;
+
+import java.util.Comparator;
+
+import node.Node;
+import node.ValuedNode;
+
+public interface BSTTree<N extends ValuedNode<N, T>, T> extends Tree<N> {
+	//REQUETES
+	
+	public boolean isIn(T x);
+	
+	public Comparator<T> getComparator();
+	
+	// COMMANDES
+	
+	public void add(T x);
+	
+	public void delete(T x);
+}

@@ -1,0 +1,56 @@
+package tree;
+
+import java.util.Comparator;
+import java.util.function.Function;
+
+import node.AVLNode;
+
+public class StdAVLTree<N extends AVLNode<N, T>, T> extends StdBSTTree<N, T> implements BSTTree<N, T> {
+
+	// CONSTRUCTEURS
+	
+	public StdAVLTree(Comparator<T> c, Function<T, N> f) {
+		super(c, f);
+	}
+	
+	public StdAVLTree(Comparator<T> c, Function<T, N> f,N n) {
+		super(c, f,n);
+	}
+
+	// COMMANDES
+	@Override
+	public void add(T x) {
+		this.setRoot(addValue(x,getRoot()));
+	}
+	
+	// OUTILS
+	
+	public N addValue(T value,N node) {
+		if(node == null) {
+			return factory.apply(value);
+		}
+		int c = comparator.compare(value,node.getValue());
+		if(c == 0) {
+			return node;
+		}
+		if(c < 0) {
+			node.setLeft(addValue(value,node.getLeft()));
+		} else {
+			node.setRight(addValue(value,node.getRight()));
+		}
+		updateHeight(node);
+		return node;
+	}
+	
+	
+	public void updateHeight(N n) {
+		n.setHeight(1 + Math.max(height(n.getLeft()), height(n.getRight())));
+	}
+	
+	public int height(N n) {
+		if(n == null) {
+			return 0;
+		}
+		return n.getHeight();
+	}
+}

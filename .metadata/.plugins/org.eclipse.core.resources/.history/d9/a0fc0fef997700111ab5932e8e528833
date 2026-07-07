@@ -1,0 +1,7 @@
+package utils;
+
+import javax.swing.JTabbedPane;
+
+public class StyledTabedPane extends JTabbedPane {
+
+}

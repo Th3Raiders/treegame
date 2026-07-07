@@ -1,0 +1,119 @@
+package tree;
+
+import java.util.Comparator;
+import java.util.function.Function;
+
+import node.StdValuedNode;
+import node.ValuedNode;
+
+public class StdBSTTree<N extends ValuedNode<N, T>, T> extends StdTree<N> implements BSTTree<N, T> {
+
+	// ATTRIBUTS 
+	
+	private final Comparator<T> comparator;
+	private final Function<T, N> factory;
+	
+	
+	private static final int REPR_TAB 4;
+	
+	// CONSTRUCTEURS
+
+	public StdBSTTree(Comparator <T> c,Function<T, N> f) {
+		this.comparator = c;
+		this.factory = f;
+		this.root = null;
+	}
+
+	public StdBSTTree(Comparator <T> c, Function<T, N> f,N n) {
+		this.comparator = c;
+		this.factory = f;
+		this.root = n;
+	}
+	
+	// REQUETES
+	
+	@Override
+	public boolean isIn(T x) {
+		return search(x,getRoot());
+	}
+
+	@Override
+	public Comparator<T> getComparator() {
+		return this.comparator;
+	}
+
+	
+	// COMMANDES
+	
+	@Override
+	public void add(T x) {
+		this.setRoot(addValue(x,getRoot()));
+	}
+
+	@Override
+	public void delete(T x) {
+		// TODO Auto-generated method stub
+		
+	}
+	
+	/*
+	static void cbst__repr_graphic(const cbst *p,
+		    void (*put)(const void *ref), int level) {
+		  if (IS_EMPTY(p)) {
+		    printf("%*s|\n", REPR__TAB * (int) level, "");
+		  } else {
+		    cbst__repr_graphic(RIGHT(p), put, level + 1);
+		    printf("%*s", REPR__TAB * (int) level, "");
+		    put(p->ref);
+		    printf(" h=%d b=%d \n", cbst__height(p), cbst__balance(p));
+		    cbst__repr_graphic(LEFT(p), put, level + 1);
+		  }
+		}
+	*/
+	
+	
+	public void printTree() {
+		printTreeAux(this.getRoot(),1);
+	}
+
+	// OUTILS
+	
+	
+	private void printTreeAux(N node,int level) {
+		if(node == null) {
+			printf("")
+		}
+	}
+	
+	public boolean search(T value,N node) {
+		if(node == null) {
+			return false;
+		}
+		int c = comparator.compare(value,node.getValue());
+		if(c == 0) {
+			return true;
+		}
+		if(c < 0) {
+			return search(value,node.getLeft());
+		} else {
+			return search(value,node.getRight());
+		}
+	}
+	
+	public N addValue(T value,N node) {
+		if(node == null) {
+			return factory.apply(value);
+		}
+		int c = comparator.compare(value,node.getValue());
+		if(c == 0) {
+			return node;
+		}
+		if(c < 0) {
+			node.setLeft(addValue(value,node.getLeft()));
+		} else {
+			node.setLeft(addValue(value,node.getRight()));
+		}
+		return node;
+	}
+	
+}

@@ -1,0 +1,9 @@
+package binarytree;
+
+public class treegame {
+	// ATTRIBUTS D'INSTANCE
+	
+	private JFrame frame;
+	
+	// CONSTRUCTEURS
+}

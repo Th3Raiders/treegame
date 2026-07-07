@@ -1,0 +1,28 @@
+package tree;
+
+import java.util.Comparator;
+import java.util.function.Function;
+
+import node.AVLNode;
+
+public class StdAVLTree<N extends AVLNode<N, T>, T> extends StdBSTTree<N, T> implements BSTTree<N, T> {
+
+	// CONSTRUCTEURS
+	
+	public StdAVLTree(Comparator<T> c, Function<T, N> f) {
+		super(c, f);
+	}
+	
+	public StdAVLTree(Comparator<T> c, Function<T, N> f,N n) {
+		super(c, f,n);
+	}
+
+	// COMMANDES
+	@Override
+	public void add(T x) {
+		
+	}
+	
+	// OUTILS
+	
+}

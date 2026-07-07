@@ -1,0 +1,309 @@
+package binarytree;
+
+import java.awt.Color;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.awt.event.MouseWheelEvent;
+import java.awt.geom.Point2D;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.swing.JPanel;
+import javax.swing.Timer;
+
+import node.StdAVLNode;
+import node.StdValuedNode;
+import tree.BSTTree;
+import tree.StdAVLTree;
+import tree.StdBSTTree;
+
+public class AVLPanel extends JPanel {
+
+	// ATTRIBUTS
+	
+	private static final int NODE_DIAMETER = 30;
+	private static final int VERTICAL_GAP = 60;
+	private static final int HORIZONTAL_GAP = 40;
+	
+	
+	private double scale = 1.0;
+	private double offsetX = 0;
+	private double offsetY = 0;
+	
+	private int lastMouseX;
+	private int lastMouseY;
+	
+	private BSTTree<StdAVLNode<Integer>, Integer> model = new StdAVLTree<StdAVLNode<Integer>, Integer>(Comparator.naturalOrder(),StdAVLNode::new);
+	
+	
+	
+	private final Map<StdValuedNode<Integer>, Point2D.Double> positions = new IdentityHashMap<>();
+	private int inorderCounter; 
+	
+	
+	private boolean animationMode = true;       // NOUVEAU
+    private Integer highlightedValue = null;     // NOUVEAU
+	
+    private Integer replacementValue = null;
+    
+	// CONSTRUCTEURS
+	public AVLPanel() {
+		setupNavigation();
+		setBackground();
+	}
+	
+	
+	// REQUETES
+	
+	public BSTTree<StdAVLNode<Integer>, Integer> getModel() {
+		return model;
+	}
+	
+	// COMMANDES
+	
+	
+	public void addInt(Integer i) {
+		if (!animationMode) {
+            model.add(i);
+            repaint();
+            return;
+        }
+        List<Integer> path = computeSearchPath(i);
+        model.add(i);
+        animatePath(path);
+	}
+	
+	public void deleteInt(Integer i) {
+	    if (!animationMode) {
+	        model.delete(i);
+	        repaint();
+	        return;
+	    }
+	    if (!model.isIn(i)) {
+	        return; // rien à animer si la valeur n'existe pas
+	    }
+	    List<Integer> path = computeDeletePath(i);
+	    animateThenDelete(path, i); // MODIFIÉ : on ne supprime plus avant
+	}
+	
+	// NOUVEAU : remplace animatePath pour ce cas précis
+	private void animateThenDelete(List<Integer> path, int valueToDelete) {
+	    final int[] index = {0};
+	    Timer timer = new Timer(500, null);
+	    timer.addActionListener(e -> {
+	        if (index[0] < path.size()) {
+	            highlightedValue = path.get(index[0]);
+	            repaint();
+	            index[0]++;
+	        } else {
+	            timer.stop();
+	            highlightedValue = null;
+	            replacementValue = null; // NOUVEAU
+	            model.delete(valueToDelete);
+	            repaint();
+	        }
+	    });
+	    timer.start();
+	}
+	
+	public boolean searchInt(Integer i) {
+		return model.isIn(i);
+	}
+	
+	
+	@Override
+	protected void paintComponent(Graphics g) {
+		super.paintComponent(g);
+		Graphics2D g2 = (Graphics2D) g;
+		g2.translate(offsetX, offsetY);
+		g2.scale(scale, scale);
+
+		StdAVLNode<Integer> root = model.getRoot();
+		if (root != null) {
+			positions.clear();          // NOUVEAU
+			inorderCounter = 0;         // NOUVEAU
+			computeLayout(root, 0);     // NOUVEAU : calcule toutes les positions d'abord
+			drawTree(g2, root);         // MODIFIÉ : dessine à partir des positions calculées
+		}
+	}
+
+	
+	private void computeLayout(StdAVLNode<Integer> node, int depth) {
+		if (node == null) {
+			return;
+		}
+		computeLayout(node.getLeft(), depth + 1);
+
+		double x = inorderCounter * HORIZONTAL_GAP + 40;
+		double y = depth * VERTICAL_GAP + 40;
+		positions.put(node, new Point2D.Double(x, y));
+		inorderCounter++;
+
+		computeLayout(node.getRight(), depth + 1);
+	}
+	
+	// MODIFIÉ : ne calcule plus de position, se contente de lire la map
+	private void drawTree(Graphics g, StdAVLNode<Integer> node) {
+	    Point2D.Double p = positions.get(node);
+
+	    if (node.getLeft() != null) {
+	        Point2D.Double childP = positions.get(node.getLeft());
+	        g.drawLine((int) p.x, (int) p.y, (int) childP.x, (int) childP.y);
+	        drawTree(g, node.getLeft());
+	    }
+	    if (node.getRight() != null) {
+	        Point2D.Double childP = positions.get(node.getRight());
+	        g.drawLine((int) p.x, (int) p.y, (int) childP.x, (int) childP.y);
+	        drawTree(g, node.getRight());
+	    }
+
+	    String s = String.valueOf(node.getValue());
+        FontMetrics fm = g.getFontMetrics();
+        int strWidth = fm.stringWidth(s);
+        int diameter = Math.max(NODE_DIAMETER, strWidth + 16);
+
+        // MODIFIÉ : couleur du cercle conditionnelle
+        if (replacementValue != null && replacementValue.equals(node.getValue())) {
+            g.setColor(Color.GREEN);
+        } else if (highlightedValue != null && highlightedValue.equals(node.getValue())) {
+            g.setColor(Color.RED);
+        } else {
+            g.setColor(Color.WHITE);
+        }
+        g.fillOval((int) p.x - diameter / 2, (int) p.y - diameter / 2, diameter, diameter);
+        g.setColor(Color.BLACK);
+        g.drawOval((int) p.x - diameter / 2, (int) p.y - diameter / 2, diameter, diameter);
+
+        g.drawString(s, (int) p.x - strWidth / 2, (int) p.y + fm.getAscent() / 2 - 2);
+	}
+	
+	
+	private void setupNavigation() {
+		addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				lastMouseX = e.getX();
+				lastMouseY = e.getY();
+			}
+		});
+		
+		addMouseMotionListener(new MouseMotionAdapter() {
+			@Override
+			public void mouseDragged(MouseEvent e) {
+				offsetX += e.getX() - lastMouseX;
+				offsetY += e.getY() - lastMouseY;
+				
+				lastMouseX = e.getX();
+				lastMouseY = e.getY();
+				
+				repaint();
+			}
+		});
+		
+		addMouseWheelListener(this::handleZoom);
+	}
+	
+	
+	private void handleZoom(MouseWheelEvent e) {
+		double zoomFactor = (e.getWheelRotation() < 0) ? 1.1 : 0.9;
+
+		double mouseX = e.getX();
+		double mouseY = e.getY();
+
+		offsetX = mouseX - (mouseX - offsetX) * zoomFactor;
+		offsetY = mouseY - (mouseY - offsetY) * zoomFactor;
+		scale *= zoomFactor;
+
+		repaint();
+	}
+	
+	public void resetView() {
+		scale = 1.0;
+		offsetX = 0;
+		offsetY = 0;
+		repaint();
+	}
+	
+	public void setBackground() {
+		this.setBackground(Color.WHITE);
+	}
+	
+
+    public void setAnimationMode(boolean enabled) { // NOUVEAU
+        this.animationMode = enabled;
+    }
+	
+    // NOUVEAU : anime le parcours nœud par nœud
+    private void animatePath(List<Integer> path) {
+        final int[] index = {0};
+        Timer timer = new Timer(500, null); // 500 ms entre chaque étape
+        timer.addActionListener(e -> {
+            if (index[0] < path.size()) {
+                highlightedValue = path.get(index[0]);
+                repaint();
+                index[0]++;
+            } else {
+                timer.stop();
+                highlightedValue = null;
+                repaint();
+            }
+        });
+        timer.start();
+    }
+    
+    // NOUVEAU : reconstitue le chemin parcouru par l'algorithme d'ajout
+    private List<Integer> computeSearchPath(int v) {
+        List<Integer> path = new ArrayList<>();
+        StdValuedNode<Integer> current = model.getRoot();
+        Comparator<Integer> cmp = model.getComparator();
+        while (current != null) {
+            path.add(current.getValue());
+            int c = cmp.compare(v, current.getValue());
+            if (c == 0) {
+                break;
+            }
+            current = (c < 0) ? current.getLeft() : current.getRight();
+        }
+        path.add(v); // le nœud finalement créé/trouvé est aussi surligné
+        return path;
+    }
+    
+    
+ // NOUVEAU : reconstitue le chemin parcouru par l'algorithme de suppression
+    private List<Integer> computeDeletePath(int v) {
+        List<Integer> path = new ArrayList<>();
+        StdAVLNode<Integer> current = model.getRoot();
+        Comparator<Integer> cmp = model.getComparator();
+
+        while (current != null) {
+            path.add(current.getValue());
+            int c = cmp.compare(v, current.getValue());
+            if (c == 0) {
+                break;
+            }
+            current = (c < 0) ? current.getLeft() : current.getRight();
+        }
+
+        replacementValue = null; // NOUVEAU : réinitialisation à chaque appel
+
+        if (current != null && current.getLeft() != null && current.getRight() != null) {
+            StdValuedNode<Integer> successor = current.getRight();
+            while (successor.getLeft() != null) {
+                path.add(successor.getValue());
+                successor = successor.getLeft();
+            }
+            path.add(successor.getValue());
+            replacementValue = successor.getValue(); // NOUVEAU : on retient LE nœud remplaçant
+        }
+
+        return path;
+    }
+    
+}

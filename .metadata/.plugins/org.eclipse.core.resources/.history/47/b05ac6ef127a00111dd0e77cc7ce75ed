@@ -1,0 +1,423 @@
+package binarytree;
+
+import java.awt.Color;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.awt.event.MouseWheelEvent;
+import java.awt.geom.Point2D;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.swing.JPanel;
+import javax.swing.Timer;
+
+import node.StdValuedNode;
+import tree.BSTTree;
+import tree.StdBSTTree;
+
+public class BSTPanel extends JPanel {
+
+	private static final int NODE_DIAMETER = 30;
+	private static final int VERTICAL_GAP = 60;
+	private static final int HORIZONTAL_GAP = 40;
+
+	private double scale = 1.0;
+	private double offsetX = 0;
+	private double offsetY = 0;
+
+	private int lastMouseX;
+	private int lastMouseY;
+
+	private BSTTree<StdValuedNode<Integer>, Integer> model =
+			new StdBSTTree<StdValuedNode<Integer>, Integer>(Comparator.naturalOrder(), StdValuedNode::new);
+
+	private final Map<StdValuedNode<Integer>, Point2D.Double> positions = new IdentityHashMap<>();
+	private int inorderCounter;
+
+	private boolean animationMode = false;
+	private Integer highlightedValue = null;
+	private Integer replacementValue = null;
+
+	private boolean stepMode = false;
+	private List<Integer> pendingPath = null;
+	private int pendingIndex = 0;
+	private Runnable pendingFinalAction = null;
+	private Runnable pendingOnFinished = null; // NOUVEAU
+
+	private boolean busy = false; // NOUVEAU
+
+	// CONSTRUCTEURS
+	public BSTPanel() {
+		setupNavigation();
+		setBackground();
+	}
+
+	// REQUETES
+
+	public BSTTree<StdValuedNode<Integer>, Integer> getModel() {
+		return model;
+	}
+
+	public boolean isBusy() { // NOUVEAU
+		return busy;
+	}
+
+	public boolean isAnimating() {
+		return pendingPath != null;
+	}
+
+	public boolean searchInt(Integer i) {
+		return model.isIn(i);
+	}
+
+	// COMMANDES
+
+	public void addInt(Integer i) { // MODIFIÉ : délègue à la version avec callback
+		addInt(i, null);
+	}
+
+	public void addInt(Integer i, Runnable onFinished) { // NOUVEAU
+		if (busy) {
+			return;
+		}
+		if (!animationMode) {
+			model.add(i);
+			repaint();
+			if (onFinished != null) {
+				onFinished.run();
+			}
+			return;
+		}
+		busy = true;
+		List<Integer> path = computeSearchPath(i);
+		model.add(i);
+		if (stepMode) {
+			startStepAnimation(path, null, onFinished);
+		} else {
+			animatePath(path, onFinished);
+		}
+	}
+
+	public void deleteInt(Integer i) { // MODIFIÉ
+		deleteInt(i, null);
+	}
+
+	public void deleteInt(Integer i, Runnable onFinished) { // NOUVEAU
+		if (busy) {
+			return;
+		}
+		if (!animationMode) {
+			model.delete(i);
+			repaint();
+			if (onFinished != null) {
+				onFinished.run();
+			}
+			return;
+		}
+		if (!model.isIn(i)) {
+			if (onFinished != null) {
+				onFinished.run();
+			}
+			return;
+		}
+		busy = true;
+		List<Integer> path = computeDeletePath(i);
+		if (stepMode) {
+			startStepAnimation(path, () -> model.delete(i), onFinished);
+		} else {
+			animateThenDelete(path, i, onFinished);
+		}
+	}
+
+	private void animateThenDelete(List<Integer> path, int valueToDelete, Runnable onFinished) { // MODIFIÉ
+		final int[] index = {0};
+		Timer timer = new Timer(500, null);
+		timer.addActionListener(e -> {
+			if (index[0] < path.size()) {
+				highlightedValue = path.get(index[0]);
+				repaint();
+				index[0]++;
+			} else {
+				timer.stop();
+				highlightedValue = null;
+				replacementValue = null;
+				model.delete(valueToDelete);
+				repaint();
+				busy = false; // NOUVEAU
+				if (onFinished != null) { // NOUVEAU
+					onFinished.run();
+				}
+			}
+		});
+		timer.start();
+	}
+
+	private void startStepAnimation(List<Integer> path, Runnable finalAction, Runnable onFinished) { // MODIFIÉ
+		pendingPath = path;
+		pendingIndex = 0;
+		pendingFinalAction = finalAction;
+		pendingOnFinished = onFinished; // NOUVEAU
+		highlightedValue = null;
+		repaint();
+	}
+
+	public void nextStep() { // MODIFIÉ
+		if (pendingPath == null) {
+			return;
+		}
+		if (pendingIndex < pendingPath.size()) {
+			highlightedValue = pendingPath.get(pendingIndex);
+			pendingIndex++;
+			repaint();
+		} else {
+			highlightedValue = null;
+			replacementValue = null;
+			if (pendingFinalAction != null) {
+				pendingFinalAction.run();
+			}
+			Runnable finished = pendingOnFinished; // NOUVEAU
+			pendingPath = null;
+			pendingFinalAction = null;
+			pendingOnFinished = null; // NOUVEAU
+			busy = false; // NOUVEAU
+			repaint();
+			if (finished != null) { // NOUVEAU
+				finished.run();
+			}
+		}
+	}
+
+	public void setStepMode(boolean enabled) {
+		this.stepMode = enabled;
+	}
+
+	@Override
+	protected void paintComponent(Graphics g) {
+		super.paintComponent(g);
+		Graphics2D g2 = (Graphics2D) g;
+		g2.translate(offsetX, offsetY);
+		g2.scale(scale, scale);
+
+		StdValuedNode<Integer> root = model.getRoot();
+		if (root != null) {
+			positions.clear();
+			inorderCounter = 0;
+			computeLayout(root, 0);
+			drawTree(g2, root);
+		}
+	}
+
+	private void computeLayout(StdValuedNode<Integer> node, int depth) {
+		if (node == null) {
+			return;
+		}
+		computeLayout(node.getLeft(), depth + 1);
+		double x = inorderCounter * HORIZONTAL_GAP + 40;
+		double y = depth * VERTICAL_GAP + 40;
+		positions.put(node, new Point2D.Double(x, y));
+		inorderCounter++;
+		computeLayout(node.getRight(), depth + 1);
+	}
+
+	private void drawTree(Graphics g, StdValuedNode<Integer> node) {
+		Point2D.Double p = positions.get(node);
+
+		if (node.getLeft() != null) {
+			Point2D.Double childP = positions.get(node.getLeft());
+			g.drawLine((int) p.x, (int) p.y, (int) childP.x, (int) childP.y);
+			drawTree(g, node.getLeft());
+		}
+		if (node.getRight() != null) {
+			Point2D.Double childP = positions.get(node.getRight());
+			g.drawLine((int) p.x, (int) p.y, (int) childP.x, (int) childP.y);
+			drawTree(g, node.getRight());
+		}
+
+		String s = String.valueOf(node.getValue());
+		FontMetrics fm = g.getFontMetrics();
+		int strWidth = fm.stringWidth(s);
+		int diameter = Math.max(NODE_DIAMETER, strWidth + 16);
+
+		if (replacementValue != null && replacementValue.equals(node.getValue())) {
+			g.setColor(Color.GREEN);
+		} else if (highlightedValue != null && highlightedValue.equals(node.getValue())) {
+			g.setColor(Color.RED);
+		} else {
+			g.setColor(Color.WHITE);
+		}
+		g.fillOval((int) p.x - diameter / 2, (int) p.y - diameter / 2, diameter, diameter);
+		g.setColor(Color.BLACK);
+		g.drawOval((int) p.x - diameter / 2, (int) p.y - diameter / 2, diameter, diameter);
+
+		g.drawString(s, (int) p.x - strWidth / 2, (int) p.y + fm.getAscent() / 2 - 2);
+	}
+
+	private void setupNavigation() {
+		addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				lastMouseX = e.getX();
+				lastMouseY = e.getY();
+			}
+		});
+
+		addMouseMotionListener(new MouseMotionAdapter() {
+			@Override
+			public void mouseDragged(MouseEvent e) {
+				offsetX += e.getX() - lastMouseX;
+				offsetY += e.getY() - lastMouseY;
+				lastMouseX = e.getX();
+				lastMouseY = e.getY();
+				repaint();
+			}
+		});
+
+		addMouseWheelListener(this::handleZoom);
+	}
+
+	private void handleZoom(MouseWheelEvent e) {
+		double zoomFactor = (e.getWheelRotation() < 0) ? 1.1 : 0.9;
+		double mouseX = e.getX();
+		double mouseY = e.getY();
+		offsetX = mouseX - (mouseX - offsetX) * zoomFactor;
+		offsetY = mouseY - (mouseY - offsetY) * zoomFactor;
+		scale *= zoomFactor;
+		repaint();
+	}
+
+	public void resetView() {
+		scale = 1.0;
+		offsetX = 0;
+		offsetY = 0;
+		repaint();
+	}
+
+	public void setBackground() {
+		this.setBackground(Color.WHITE);
+	}
+
+	public void setAnimationMode(boolean enabled) {
+		this.animationMode = enabled;
+	}
+
+	private void animatePath(List<Integer> path, Runnable onFinished) { // MODIFIÉ
+		final int[] index = {0};
+		Timer timer = new Timer(500, null);
+		timer.addActionListener(e -> {
+			if (index[0] < path.size()) {
+				highlightedValue = path.get(index[0]);
+				repaint();
+				index[0]++;
+			} else {
+				timer.stop();
+				highlightedValue = null;
+				repaint();
+				busy = false; // NOUVEAU
+				if (onFinished != null) { // NOUVEAU
+					onFinished.run();
+				}
+			}
+		});
+		timer.start();
+	}
+
+	private List<Integer> computeSearchPath(int v) {
+		List<Integer> path = new ArrayList<>();
+		StdValuedNode<Integer> current = model.getRoot();
+		Comparator<Integer> cmp = model.getComparator();
+		while (current != null) {
+			path.add(current.getValue());
+			int c = cmp.compare(v, current.getValue());
+			if (c == 0) {
+				break;
+			}
+			current = (c < 0) ? current.getLeft() : current.getRight();
+		}
+		path.add(v);
+		return path;
+	}
+
+	private List<Integer> computeDeletePath(int v) {
+		List<Integer> path = new ArrayList<>();
+		StdValuedNode<Integer> current = model.getRoot();
+		Comparator<Integer> cmp = model.getComparator();
+
+		while (current != null) {
+			path.add(current.getValue());
+			int c = cmp.compare(v, current.getValue());
+			if (c == 0) {
+				break;
+			}
+			current = (c < 0) ? current.getLeft() : current.getRight();
+		}
+
+		replacementValue = null;
+
+		if (current != null && current.getLeft() != null && current.getRight() != null) {
+			StdValuedNode<Integer> successor = current.getRight();
+			while (successor.getLeft() != null) {
+				path.add(successor.getValue());
+				successor = successor.getLeft();
+			}
+			path.add(successor.getValue());
+			replacementValue = successor.getValue();
+		}
+
+		return path;
+	}
+	
+	public void searchInt(Integer i, Runnable onFinished) { // NOUVEAU
+	    if (busy) {
+	        return;
+	    }
+	    if (!animationMode) {
+	        if (onFinished != null) {
+	            onFinished.run();
+	        }
+	        return;
+	    }
+
+	    busy = true;
+	    boolean found = model.isIn(i);
+	    List<Integer> path = computeSearchPath(i);
+
+	    Runnable markResult = () -> {
+	        replacementValue = found ? i : null;
+	        repaint();
+	    };
+
+	    if (stepMode) {
+	        startStepAnimation(path, markResult, onFinished);
+	    } else {
+	        animateSearchThenMark(path, markResult, onFinished);
+	    }
+	}
+
+	private void animateSearchThenMark(List<Integer> path, Runnable finalAction, Runnable onFinished) { // NOUVEAU
+	    final int[] index = {0};
+	    Timer timer = new Timer(500, null);
+	    timer.addActionListener(e -> {
+	        if (index[0] < path.size()) {
+	            highlightedValue = path.get(index[0]);
+	            repaint();
+	            index[0]++;
+	        } else {
+	            timer.stop();
+	            highlightedValue = null;
+	            finalAction.run();
+	            busy = false;
+	            if (onFinished != null) {
+	                onFinished.run();
+	            }
+	        }
+	    });
+	    timer.start();
+	}
+}

@@ -1,0 +1,16 @@
+package tree;
+
+import node.Node;
+import node.ValuedNode;
+
+public interface BSTTree<N extends ValuedNode<N, T>, T> extends Tree<N> {
+	//REQUETES
+	
+	public boolean isIn(T x);
+	
+	// COMMANDES
+	
+	public void add(T x);
+	
+	public void delete(T x);
+}

@@ -1,0 +1,15 @@
+package tree;
+
+import node.Node;
+
+public interface BSTTree<N extends Node<N>,T> extends Tree<N>  {
+	//REQUETES
+	
+	public boolean isIn(T x);
+	
+	// COMMANDES
+	
+	public void add(T x);
+	
+	public void delete(T x);
+}

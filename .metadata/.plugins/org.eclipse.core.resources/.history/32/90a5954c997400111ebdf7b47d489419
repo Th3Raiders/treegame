@@ -1,0 +1,10 @@
+package binarytree;
+
+public interface Tree {
+    // REQUETES
+	
+	
+	public Node getRoot();
+	
+	public int getHeight();
+}
