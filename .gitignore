@@ -1,1 +1,3 @@
+git rm -r --cached binarytree/bin
+git rm -r --cached .metadata
 target/
