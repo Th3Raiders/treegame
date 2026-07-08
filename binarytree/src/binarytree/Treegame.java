@@ -2,21 +2,32 @@ package binarytree;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
+import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 
 import tree.BSTTree;
 import utils.StyledButton;
 import utils.StyledCheckBox;
+import utils.StyledSlider;
 import utils.StyledTabbedPane;
 
 public class Treegame {
@@ -88,9 +99,36 @@ public class Treegame {
 	private JButton levelOrderButton;
 	
 	
+	private JButton exportButton; // NOUVEAU
+	
+	private List<HistoryEntry> history = new ArrayList<>(); // NOUVEAU
+	private JButton replayButton; // NOUVEAU
+
 	
 	
 	
+	private QuizController quizController = new QuizController();
+	private QuizPanel quizPanel;
+	private JButton startQuizButton;
+	
+	
+	
+	private StyledSlider speedSlider; // NOUVEAU
+	private JLabel speedLabel; // NOUVEAU
+	
+	private static final String BST_AUTOSAVE = "autosave_bst.tree"; // NOUVEAU
+	private static final String AVL_AUTOSAVE = "autosave_avl.tree"; // NOUVEAU
+	
+	
+	private static class HistoryEntry { // NOUVEAU
+	    enum Type { ADD, DELETE }
+	    final Type type;
+	    final int value;
+	    HistoryEntry(Type type, int value) {
+	        this.type = type;
+	        this.value = value;
+	    }
+	}
 	
 	
 	// CONSTRUCTEURS
@@ -112,6 +150,21 @@ public class Treegame {
 			    refresh();
 			    updateStepButtonState();
 			});
+		 
+		 
+		 
+		 loadAutoSave(); // NOUVEAU
+
+		 frame.addWindowListener(new java.awt.event.WindowAdapter() { // NOUVEAU
+		 	@Override
+		 	public void windowClosing(java.awt.event.WindowEvent e) {
+		 		saveAutoSave();
+		 	}
+		 });
+		 frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // NOUVEAU : nécessaire pour que windowClosing soit bien appelé avant fermeture
+		 
+		 
+		 
 		 this.stepModeCheckBox = new StyledCheckBox("Pas à pas");           // NOUVEAU
 		 this.nextStepButton = new StyledButton("Suivant");             // NOUVEAU
 		 this.nextStepButton.setEnabled(false);        
@@ -120,6 +173,13 @@ public class Treegame {
 		 this.inorderButton = new StyledButton("Parcours infixe");
 		 this.postorderButton = new StyledButton("Parcours postfixe");
 		 this.levelOrderButton = new StyledButton("Parcours en largeur");
+		 this.replayButton = new StyledButton("Rejouer l'historique"); // NOUVEAU
+		 this.exportButton = new StyledButton("Exporter l'arbre"); // NOUVEAU
+		 this.quizPanel = new QuizPanel();
+		 this.startQuizButton = new StyledButton("Mode Quiz");
+		 this.speedSlider = new StyledSlider(25, 300, 100); // NOUVEAU : de 0.25x à 3x, défaut 1x
+		 this.speedLabel = new JLabel("Vitesse : x1.0"); // NOUVEAU
+		 quizPanel.setVisible(false);
 		 placeComponents();
 		 connectControllers();
 	}
@@ -150,6 +210,10 @@ public class Treegame {
                 q.add(searchButton);
                 q.add(generateButton);
                 q.add(resetButton);
+                
+                q.add(exportButton); // NOUVEAU
+                q.add(replayButton);
+                q.add(startQuizButton); // NOUVEAU
         	} //--
         	p.add(q,BorderLayout.NORTH);
         	q = new JPanel(new BorderLayout());
@@ -164,7 +228,9 @@ public class Treegame {
         		q.add(r,BorderLayout.NORTH);
         		r = new JPanel();
         		{ //--
-            		r.add(animationCheckBox);	
+            		r.add(animationCheckBox);
+            		q.add(speedLabel);   // NOUVEAU
+            		q.add(speedSlider);  // NOUVEAU
             	    r.add(stepModeCheckBox);   // NOUVEAU
             	    r.add(nextStepButton);      // NOUVEAU
         		} //--
@@ -186,6 +252,8 @@ public class Treegame {
         	tabbedPane.addTab("AVL",avlPanel);
         }//--
         frame.add(tabbedPane,BorderLayout.CENTER);
+        frame.setJMenuBar(createMenuBar()); // NOUVEAU
+        frame.add(quizPanel, BorderLayout.SOUTH); // NOUVEAU
     } 
 	
     private void connectControllers() {
@@ -195,14 +263,9 @@ public class Treegame {
     	        String vs = JOptionPane.showInputDialog(null, "Entrez la valeur.");
     	        if (vs != null) {
     	            int v = Integer.parseInt(vs);
-    	            bstPanel.addInt(v, () -> { // MODIFIÉ
-    	                refresh();
-    	                updateStepButtonState();
-    	            });
-    	            avlPanel.addInt(v, () -> { // MODIFIÉ
-    	                refresh();
-    	                updateStepButtonState();
-    	            });
+    	            history.add(new HistoryEntry(HistoryEntry.Type.ADD, v)); // NOUVEAU
+    	            bstPanel.addInt(v, () -> { refresh(); updateStepButtonState(); });
+    	            avlPanel.addInt(v, () -> { refresh(); updateStepButtonState(); });
     	            updateStepButtonState();
     	            refresh();
     	        }
@@ -215,6 +278,7 @@ public class Treegame {
     	        String vs = JOptionPane.showInputDialog(null, "Entrez la valeur.");
     	        if (vs != null) {
     	            int v = Integer.parseInt(vs);
+    	            history.add(new HistoryEntry(HistoryEntry.Type.DELETE, v)); // NOUVEAU
     	            bstPanel.deleteInt(v, () -> { // MODIFIÉ
     	                refresh();
     	                updateStepButtonState();
@@ -326,6 +390,115 @@ public class Treegame {
      	    avlPanel.traverseLevelOrder(() -> { refresh(); updateStepButtonState(); });
      	    updateStepButtonState();
      	});
+     	
+     	replayButton.addActionListener(new ActionListener() {
+     	    @Override
+     	    public void actionPerformed(ActionEvent arg0) {
+     	        replayHistory();
+     	    }
+     	});
+     	
+     	exportButton.addActionListener(new ActionListener() {
+     	    @Override
+     	    public void actionPerformed(ActionEvent arg0) {
+     	        AbstractTreePanel<?> current = (tabbedPane.getSelectedIndex() == 0) ? bstPanel : avlPanel;
+
+     	        Object[] options = {"PNG", "PDF"};
+     	        int choice = JOptionPane.showOptionDialog(null, "Format d'export ?", "Exporter l'arbre",
+     	                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+     	        if (choice == -1) {
+     	            return;
+     	        }
+
+     	        javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+     	        int result = chooser.showSaveDialog(null);
+     	        if (result != javax.swing.JFileChooser.APPROVE_OPTION) {
+     	            return;
+     	        }
+     	        java.io.File file = chooser.getSelectedFile();
+
+     	        try {
+     	            if (choice == 0) {
+     	                if (!file.getName().toLowerCase().endsWith(".png")) {
+     	                    file = new java.io.File(file.getAbsolutePath() + ".png");
+     	                }
+     	                current.exportAsPNG(file);
+     	            } else {
+     	                if (!file.getName().toLowerCase().endsWith(".pdf")) {
+     	                    file = new java.io.File(file.getAbsolutePath() + ".pdf");
+     	                }
+     	                current.exportAsPDF(file);
+     	            }
+     	            JOptionPane.showMessageDialog(null, "Export réussi : " + file.getAbsolutePath());
+     	        } catch (Exception ex) {
+     	            JOptionPane.showMessageDialog(null, "Erreur lors de l'export : " + ex.getMessage());
+     	        }
+     	    }
+     	});
+     	
+     	quizController.setOnQuestionChanged(() -> {
+     	    QuizQuestion question = quizController.getCurrentQuestion();
+     	    quizPanel.getQuestionLabel().setText(question.text);
+     	    boolean numeric = (question.correctNumericAnswer != null);
+     	    quizPanel.setNumericInputVisible(numeric);
+     	    quizPanel.setAnswered(false);
+     	    refresh();
+     	});
+
+     	quizController.setOnAnswerChecked((correct, message) -> {
+     	    quizPanel.getQuestionLabel().setText(message);
+     	    quizPanel.setAnswered(true);
+     	    quizPanel.getScoreLabel().setText(
+     	            "Score : " + quizController.getScore() + " / " + quizController.getTotalQuestions());
+     	});
+
+     	startQuizButton.addActionListener(new ActionListener() {
+     	    @Override
+     	    public void actionPerformed(ActionEvent arg0) {
+     	        AbstractTreePanel<?> current = (tabbedPane.getSelectedIndex() == 0) ? bstPanel : avlPanel;
+     	        quizController.start(current);
+     	        quizPanel.setVisible(true);
+     	        startQuizButton.setEnabled(false);
+     	        setControlsEnabledForQuiz(false);
+     	    }
+     	});
+
+     	quizPanel.getValidateButton().addActionListener(new ActionListener() {
+     	    @Override
+     	    public void actionPerformed(ActionEvent arg0) {
+     	        try {
+     	            int answer = Integer.parseInt(quizPanel.getAnswerField().getText().trim());
+     	            quizController.submitNumericAnswer(answer);
+     	        } catch (NumberFormatException ex) {
+     	            JOptionPane.showMessageDialog(frame, "Entre un nombre valide.");
+     	        }
+     	    }
+     	});
+
+     	quizPanel.getNextButton().addActionListener(new ActionListener() {
+     	    @Override
+     	    public void actionPerformed(ActionEvent arg0) {
+     	        quizController.nextQuestion();
+     	    }
+     	});
+
+     	quizPanel.getStopButton().addActionListener(new ActionListener() {
+     	    @Override
+     	    public void actionPerformed(ActionEvent arg0) {
+     	        quizController.stop();
+     	        quizPanel.setVisible(false);
+     	        startQuizButton.setEnabled(true);
+     	        setControlsEnabledForQuiz(true);
+     	        refresh();
+     	    }
+     	});
+     	
+     	speedSlider.addChangeListener(e -> { // NOUVEAU
+     	    double multiplier = speedSlider.getValue() / 100.0;
+     	    bstPanel.setSpeedMultiplier(multiplier);
+     	    avlPanel.setSpeedMultiplier(multiplier);
+     	    speedLabel.setText(String.format("Vitesse : x%.2f", multiplier));
+     	});
     }
     
     private void refresh() {
@@ -355,19 +528,211 @@ public class Treegame {
 	    stepModeCheckBox.setEnabled(!busy);   // NOUVEAU
 	}
 	
-	private void generateSequential(int remaining) { // NOUVEAU
+	private void generateSequential(int remaining) {
 	    if (remaining <= 0) {
 	        refresh();
 	        updateStepButtonState();
 	        return;
 	    }
 	    int r = getRandom(GEN_MIN, GEN_MAX);
+	    history.add(new HistoryEntry(HistoryEntry.Type.ADD, r)); // NOUVEAU
 	    bstPanel.addInt(r, () -> {
 	        avlPanel.addInt(r, () -> {
-	            generateSequential(remaining - 1); // on n'enchaîne qu'une fois les DEUX terminés
+	            generateSequential(remaining - 1);
 	        });
 	    });
 	    updateStepButtonState();
+	}
+	
+	
+	private void replayHistory() { // NOUVEAU
+	    if (history.isEmpty()) {
+	        return;
+	    }
+
+	    boolean prevAnimation = animationCheckBox.isSelected();
+	    boolean prevStepMode = stepModeCheckBox.isSelected();
+
+	    animationCheckBox.setSelected(true);
+	    stepModeCheckBox.setSelected(false);
+	    bstPanel.setAnimationMode(true);
+	    avlPanel.setAnimationMode(true);
+	    bstPanel.setStepMode(false);
+	    avlPanel.setStepMode(false);
+
+	    bstPanel.getModel().setRoot(null);
+	    avlPanel.getModel().setRoot(null);
+	    bstPanel.repaint();
+	    avlPanel.repaint();
+	    refresh();
+
+	    setControlsEnabledDuringReplay(false);
+	    replayStep(0, prevAnimation, prevStepMode);
+	}
+
+	private void replayStep(int index, boolean prevAnimation, boolean prevStepMode) { // NOUVEAU
+	    if (index >= history.size()) {
+	        animationCheckBox.setSelected(prevAnimation);
+	        stepModeCheckBox.setSelected(prevStepMode);
+	        bstPanel.setAnimationMode(prevAnimation);
+	        avlPanel.setAnimationMode(prevAnimation);
+	        bstPanel.setStepMode(prevStepMode);
+	        avlPanel.setStepMode(prevStepMode);
+	        setControlsEnabledDuringReplay(true);
+	        refresh();
+	        updateStepButtonState();
+	        return;
+	    }
+
+	    HistoryEntry entry = history.get(index);
+	    Runnable next = () -> replayStep(index + 1, prevAnimation, prevStepMode);
+
+	    if (entry.type == HistoryEntry.Type.ADD) {
+	        bstPanel.addInt(entry.value, () -> avlPanel.addInt(entry.value, next));
+	    } else {
+	        bstPanel.deleteInt(entry.value, () -> avlPanel.deleteInt(entry.value, next));
+	    }
+	}
+
+	private void setControlsEnabledDuringReplay(boolean enabled) { // NOUVEAU
+	    addButton.setEnabled(enabled);
+	    deleteButton.setEnabled(enabled);
+	    searchButton.setEnabled(enabled);
+	    generateButton.setEnabled(enabled);
+	    resetButton.setEnabled(enabled);
+	    replayButton.setEnabled(enabled);
+	    animationCheckBox.setEnabled(enabled);
+	    stepModeCheckBox.setEnabled(enabled);
+	}
+	
+	private JMenuBar createMenuBar() { // NOUVEAU
+	    JMenuBar menuBar = new JMenuBar();
+	    JMenu exportMenu = new JMenu("Export");
+	    JMenuItem tikzItem = new JMenuItem("Générer code LaTeX (TikZ)");
+	    tikzItem.addActionListener(e -> showTikzDialog());
+	    exportMenu.add(tikzItem);
+	    menuBar.add(exportMenu);
+	    
+	    
+	    JMenuItem saveItem = new JMenuItem("Sauvegarder l'arbre...");
+	    saveItem.addActionListener(e -> exportTreeToFile());
+	    exportMenu.add(saveItem);
+
+	    JMenuItem loadItem = new JMenuItem("Charger un arbre...");
+	    loadItem.addActionListener(e -> importTreeFromFile());
+	    exportMenu.add(loadItem);
+	    
+	    
+	    return menuBar;
+	}
+
+	private void showTikzDialog() { // NOUVEAU
+	    AbstractTreePanel<?> current = (tabbedPane.getSelectedIndex() == 0) ? bstPanel : avlPanel;
+	    String code = current.generateTikzCode();
+
+	    JTextArea textArea = new JTextArea(code);
+	    textArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
+	    textArea.setEditable(true);
+	    JScrollPane scrollPane = new JScrollPane(textArea);
+	    scrollPane.setPreferredSize(new Dimension(600, 400));
+
+	    JButton copyButton = new JButton("Copier dans le presse-papier");
+	    copyButton.addActionListener(e -> {
+	        StringSelection selection = new StringSelection(textArea.getText());
+	        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
+	    });
+
+	    JPanel panel = new JPanel(new BorderLayout());
+	    panel.add(scrollPane, BorderLayout.CENTER);
+	    panel.add(copyButton, BorderLayout.SOUTH);
+
+	    JOptionPane.showMessageDialog(frame, panel, "Code TikZ de l'arbre", JOptionPane.PLAIN_MESSAGE);
+	}
+	
+	private void setControlsEnabledForQuiz(boolean enabled) {
+	    addButton.setEnabled(enabled);
+	    deleteButton.setEnabled(enabled);
+	    searchButton.setEnabled(enabled);
+	    generateButton.setEnabled(enabled);
+	    resetButton.setEnabled(enabled);
+	}
+	
+	private void exportTreeToFile() {
+		AbstractTreePanel<?> current = (tabbedPane.getSelectedIndex() == 0) ? bstPanel : avlPanel;
+		javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+		int result = chooser.showSaveDialog(frame);
+		if (result != javax.swing.JFileChooser.APPROVE_OPTION) {
+			return;
+		}
+		java.io.File file = chooser.getSelectedFile();
+		if (!file.getName().toLowerCase().endsWith(".tree")) {
+			file = new java.io.File(file.getAbsolutePath() + ".tree");
+		}
+		try {
+			current.exportToFile(file);
+			JOptionPane.showMessageDialog(frame, "Arbre sauvegardé : " + file.getAbsolutePath());
+		} catch (java.io.IOException ex) {
+			JOptionPane.showMessageDialog(frame, "Erreur lors de la sauvegarde : " + ex.getMessage());
+		}
+	}
+
+	private void importTreeFromFile() {
+		AbstractTreePanel<?> current = (tabbedPane.getSelectedIndex() == 0) ? bstPanel : avlPanel;
+		javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+		int result = chooser.showOpenDialog(frame);
+		if (result != javax.swing.JFileChooser.APPROVE_OPTION) {
+			return;
+		}
+		java.io.File file = chooser.getSelectedFile();
+		try {
+			AbstractTreePanel.TreeFileData data = AbstractTreePanel.readTreeFile(file);
+			if (!data.tag.equals(current.treeTypeTag())) {
+				int confirm = JOptionPane.showConfirmDialog(frame,
+						"Ce fichier contient un arbre de type " + data.tag
+								+ ", mais l'onglet actif est " + current.treeTypeTag() + ". Charger quand même ?",
+						"Type différent", JOptionPane.YES_NO_OPTION);
+				if (confirm != JOptionPane.YES_OPTION) {
+					return;
+				}
+			}
+			current.loadFromSerialized(data.data);
+			refresh();
+			JOptionPane.showMessageDialog(frame, "Arbre chargé depuis : " + file.getAbsolutePath());
+		} catch (java.io.IOException ex) {
+			JOptionPane.showMessageDialog(frame, "Erreur lors du chargement : " + ex.getMessage());
+		}
+	}
+	
+	
+	private void loadAutoSave() { // NOUVEAU
+		tryLoadAutoSave(bstPanel, BST_AUTOSAVE);
+		tryLoadAutoSave(avlPanel, AVL_AUTOSAVE);
+		refresh();
+	}
+
+	private void tryLoadAutoSave(AbstractTreePanel<?> panel, String filename) {
+		java.io.File file = new java.io.File(filename);
+		if (!file.exists()) {
+			return;
+		}
+		try {
+			AbstractTreePanel.TreeFileData data = AbstractTreePanel.readTreeFile(file);
+			panel.loadFromSerialized(data.data);
+		} catch (java.io.IOException ex) {
+			System.err.println("Impossible de charger la sauvegarde automatique : " + ex.getMessage());
+		}
+	}
+
+	private void saveAutoSave() { // NOUVEAU
+		try {
+			bstPanel.exportToFile(new java.io.File(BST_AUTOSAVE));
+			avlPanel.exportToFile(new java.io.File(AVL_AUTOSAVE));
+		} catch (java.io.IOException ex) {
+			System.err.println("Impossible de sauvegarder automatiquement : " + ex.getMessage());
+		} finally {
+			frame.dispose();
+			System.exit(0);
+		}
 	}
 	
 	// POINT D'ENTREE
@@ -380,4 +745,6 @@ public class Treegame {
             }
 		});
 	}
+	
+	
 }

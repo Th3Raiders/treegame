@@ -1366,3 +1366,67 @@ Command-line arguments:  -os linux -ws gtk -arch x86_64 -product org.eclipse.epp
 
 !ENTRY ch.qos.logback.classic 1 0 2026-07-07 21:09:12.309
 !MESSAGE Logback config file: /home/ahmed/JavaDir/.metadata/.plugins/org.eclipse.m2e.logback/logback.2.7.100.20250418-1315.xml
+!SESSION 2026-07-07 23:17:16.001 -----------------------------------------------
+eclipse.buildId=4.37.0.20250905-1455
+java.version=21.0.11
+java.vendor=Ubuntu
+BootLoader constants: OS=linux, ARCH=x86_64, WS=gtk, NL=fr_FR
+Framework arguments:  -product org.eclipse.epp.package.java.product
+Command-line arguments:  -os linux -ws gtk -arch x86_64 -product org.eclipse.epp.package.java.product
+
+!ENTRY ch.qos.logback.classic 1 0 2026-07-07 23:17:18.496
+!MESSAGE Activated before the state location was initialized. Retry after the state location is initialized.
+
+!ENTRY org.eclipse.lemminx.uber-jar 4 0 2026-07-07 23:17:18.818
+!MESSAGE bundle org.eclipse.lemminx.uber-jar:0.31.0 (271) Component descriptor entry 'OSGI-INF/*.xml' not found
+
+!ENTRY ch.qos.logback.classic 1 0 2026-07-07 23:17:21.291
+!MESSAGE Logback config file: /home/ahmed/JavaDir/.metadata/.plugins/org.eclipse.m2e.logback/logback.2.7.100.20250418-1315.xml
+!SESSION 2026-07-08 02:13:54.932 -----------------------------------------------
+eclipse.buildId=4.37.0.20250905-1455
+java.version=21.0.11
+java.vendor=Ubuntu
+BootLoader constants: OS=linux, ARCH=x86_64, WS=gtk, NL=fr_FR
+Framework arguments:  -product org.eclipse.epp.package.java.product
+Command-line arguments:  -os linux -ws gtk -arch x86_64 -product org.eclipse.epp.package.java.product
+
+!ENTRY ch.qos.logback.classic 1 0 2026-07-08 02:13:56.558
+!MESSAGE Activated before the state location was initialized. Retry after the state location is initialized.
+
+!ENTRY org.eclipse.lemminx.uber-jar 4 0 2026-07-08 02:13:56.699
+!MESSAGE bundle org.eclipse.lemminx.uber-jar:0.31.0 (271) Component descriptor entry 'OSGI-INF/*.xml' not found
+
+!ENTRY ch.qos.logback.classic 1 0 2026-07-08 02:13:58.970
+!MESSAGE Logback config file: /home/ahmed/JavaDir/.metadata/.plugins/org.eclipse.m2e.logback/logback.2.7.100.20250418-1315.xml
+!SESSION 2026-07-08 13:38:50.591 -----------------------------------------------
+eclipse.buildId=4.37.0.20250905-1455
+java.version=21.0.11
+java.vendor=Ubuntu
+BootLoader constants: OS=linux, ARCH=x86_64, WS=gtk, NL=fr_FR
+Framework arguments:  -product org.eclipse.epp.package.java.product
+Command-line arguments:  -os linux -ws gtk -arch x86_64 -product org.eclipse.epp.package.java.product
+
+!ENTRY ch.qos.logback.classic 1 0 2026-07-08 13:38:53.439
+!MESSAGE Activated before the state location was initialized. Retry after the state location is initialized.
+
+!ENTRY org.eclipse.lemminx.uber-jar 4 0 2026-07-08 13:38:53.698
+!MESSAGE bundle org.eclipse.lemminx.uber-jar:0.31.0 (271) Component descriptor entry 'OSGI-INF/*.xml' not found
+
+!ENTRY ch.qos.logback.classic 1 0 2026-07-08 13:38:57.172
+!MESSAGE Logback config file: /home/ahmed/JavaDir/.metadata/.plugins/org.eclipse.m2e.logback/logback.2.7.100.20250418-1315.xml
+!SESSION 2026-07-08 14:11:16.603 -----------------------------------------------
+eclipse.buildId=4.37.0.20250905-1455
+java.version=21.0.11
+java.vendor=Ubuntu
+BootLoader constants: OS=linux, ARCH=x86_64, WS=gtk, NL=fr_FR
+Framework arguments:  -product org.eclipse.epp.package.java.product
+Command-line arguments:  -os linux -ws gtk -arch x86_64 -product org.eclipse.epp.package.java.product
+
+!ENTRY ch.qos.logback.classic 1 0 2026-07-08 14:11:18.286
+!MESSAGE Activated before the state location was initialized. Retry after the state location is initialized.
+
+!ENTRY org.eclipse.lemminx.uber-jar 4 0 2026-07-08 14:11:18.532
+!MESSAGE bundle org.eclipse.lemminx.uber-jar:0.31.0 (271) Component descriptor entry 'OSGI-INF/*.xml' not found
+
+!ENTRY ch.qos.logback.classic 1 0 2026-07-08 14:11:21.402
+!MESSAGE Logback config file: /home/ahmed/JavaDir/.metadata/.plugins/org.eclipse.m2e.logback/logback.2.7.100.20250418-1315.xml

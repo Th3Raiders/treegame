@@ -1,0 +1,560 @@
+package binarytree;
+
+import java.awt.Color;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.awt.event.MouseWheelEvent;
+import java.awt.geom.Point2D;
+import java.util.IdentityHashMap;
+import java.util.Map;
+
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+
+import node.ValuedNode;
+import tree.BSTTree;
+
+public abstract class AbstractTreePanel<N extends ValuedNode<N, Integer>> extends JPanel {
+
+	// CONSTANTES DE DESSIN, PARTAGÉES
+
+	protected static final int NODE_DIAMETER = 30;
+	protected static final int VERTICAL_GAP = 60;
+	protected static final int HORIZONTAL_GAP = 40;
+
+	// NAVIGATION (pan & zoom), IDENTIQUE POUR TOUS LES ARBRES
+
+	protected double scale = 1.0;
+	protected double offsetX = 0;
+	protected double offsetY = 0;
+	private int lastMouseX;
+	private int lastMouseY;
+
+	// MODÈLE ET DISPOSITION
+
+	protected BSTTree<N, Integer> model;
+	protected final Map<N, Point2D.Double> positions = new IdentityHashMap<>();
+	protected int inorderCounter;
+
+	// ÉTAT COMMUN À TOUTE ANIMATION
+
+	protected boolean animationMode = false;
+	protected boolean stepMode = false;
+	protected boolean busy = false;
+	protected Integer highlightedValue = null;
+	protected Integer replacementValue = null;
+
+	// CONSTRUCTEURS
+
+	protected AbstractTreePanel() {
+		setupNavigation();
+		applyDefaultBackground();
+		setToolTipText(""); // NOUVEAU : active le système de tooltip Swing sur ce composant
+		setupContextMenu();  // NOUVEAU
+	}
+
+	// REQUETES COMMUNES
+
+	public BSTTree<N, Integer> getModel() {
+		return model;
+	}
+
+	public boolean isBusy() {
+		return busy;
+	}
+
+	public boolean searchInt(Integer i) {
+		return model.isIn(i);
+	}
+
+	public abstract boolean isAnimating();
+
+	public abstract void nextStep();
+
+	public abstract void deleteInt(Integer v); // NOUVEAU
+
+	// COMMANDES COMMUNES
+
+	public void setAnimationMode(boolean enabled) {
+		this.animationMode = enabled;
+	}
+
+	public void setStepMode(boolean enabled) {
+		this.stepMode = enabled;
+	}
+
+	public void resetView() {
+		scale = 1.0;
+		offsetX = 0;
+		offsetY = 0;
+		repaint();
+	}
+
+	protected void applyDefaultBackground() {
+		setBackground(Color.WHITE);
+	}
+
+	// ================== DISPOSITION (calcul des positions) ==================
+
+	protected void recomputePositions() {
+		positions.clear();
+		inorderCounter = 0;
+		layoutAux(model.getRoot(), 0, positions);
+	}
+
+	protected Map<N, Point2D.Double> snapshotLayout() {
+		Map<N, Point2D.Double> snapshot = new IdentityHashMap<>();
+		inorderCounter = 0;
+		layoutAux(model.getRoot(), 0, snapshot);
+		return snapshot;
+	}
+
+	private void layoutAux(N node, int depth, Map<N, Point2D.Double> target) {
+		if (node == null) {
+			return;
+		}
+		layoutAux(node.getLeft(), depth + 1, target);
+		double x = inorderCounter * HORIZONTAL_GAP + 40;
+		double y = depth * VERTICAL_GAP + 40;
+		target.put(node, new Point2D.Double(x, y));
+		inorderCounter++;
+		layoutAux(node.getRight(), depth + 1, target);
+	}
+
+	// ================== DESSIN (commun) ==================
+
+	@Override
+	protected void paintComponent(Graphics g) {
+		super.paintComponent(g);
+		Graphics2D g2 = (Graphics2D) g;
+		g2.translate(offsetX, offsetY);
+		g2.scale(scale, scale);
+
+		N root = model.getRoot();
+		if (root != null) {
+			recomputePositions();
+			drawTree(g2, root);
+		}
+	}
+
+	protected void drawTree(Graphics g, N node) {
+		Point2D.Double p = positions.get(node);
+
+		if (node.getLeft() != null) {
+			Point2D.Double childP = positions.get(node.getLeft());
+			g.drawLine((int) p.x, (int) p.y, (int) childP.x, (int) childP.y);
+			drawTree(g, node.getLeft());
+		}
+		if (node.getRight() != null) {
+			Point2D.Double childP = positions.get(node.getRight());
+			g.drawLine((int) p.x, (int) p.y, (int) childP.x, (int) childP.y);
+			drawTree(g, node.getRight());
+		}
+
+		drawNodeCircle(g, node, p);
+	}
+
+	protected void drawNodeCircle(Graphics g, N node, Point2D.Double p) {
+		String s = String.valueOf(node.getValue());
+		FontMetrics fm = g.getFontMetrics();
+		int strWidth = fm.stringWidth(s);
+		int diameter = Math.max(NODE_DIAMETER, strWidth + 16);
+
+		if (replacementValue != null && replacementValue.equals(node.getValue())) {
+			g.setColor(Color.GREEN);
+		} else if (highlightedValue != null && highlightedValue.equals(node.getValue())) {
+			g.setColor(Color.RED);
+		} else {
+			g.setColor(Color.WHITE);
+		}
+		g.fillOval((int) p.x - diameter / 2, (int) p.y - diameter / 2, diameter, diameter);
+		g.setColor(Color.BLACK);
+		g.drawOval((int) p.x - diameter / 2, (int) p.y - diameter / 2, diameter, diameter);
+
+		g.drawString(s, (int) p.x - strWidth / 2, (int) p.y + fm.getAscent() / 2 - 2);
+	}
+
+	// ================== INTERACTION : SURVOL (tooltip) ET CLIC DROIT ==================
+
+	// NOUVEAU : trouve le nœud dont le cercle contient les coordonnées écran données
+	protected N findNodeAt(int screenX, int screenY) {
+		double logicalX = (screenX - offsetX) / scale;
+		double logicalY = (screenY - offsetY) / scale;
+		double radius = NODE_DIAMETER / 2.0 + 4;
+
+		for (Map.Entry<N, Point2D.Double> entry : positions.entrySet()) {
+			Point2D.Double p = entry.getValue();
+			double dx = logicalX - p.x;
+			double dy = logicalY - p.y;
+			if (dx * dx + dy * dy <= radius * radius) {
+				return entry.getKey();
+			}
+		}
+		return null;
+	}
+
+	// NOUVEAU : profondeur du nœud (0 = racine)
+	protected int computeDepth(N target) {
+		return computeDepthAux(model.getRoot(), target, 0);
+	}
+
+	private int computeDepthAux(N node, N target, int depth) {
+		if (node == null) {
+			return -1;
+		}
+		if (node == target) {
+			return depth;
+		}
+		int leftResult = computeDepthAux(node.getLeft(), target, depth + 1);
+		if (leftResult != -1) {
+			return leftResult;
+		}
+		return computeDepthAux(node.getRight(), target, depth + 1);
+	}
+
+	// NOUVEAU : hauteur du sous-arbre enraciné à ce nœud
+	protected int computeSubtreeHeight(N node) {
+		if (node == null) {
+			return 0;
+		}
+		return 1 + Math.max(computeSubtreeHeight(node.getLeft()), computeSubtreeHeight(node.getRight()));
+	}
+
+	// NOUVEAU : point d'extension pour les infos spécifiques (ex: facteur d'équilibre en AVL)
+	protected String extraNodeInfo(N node) {
+		return "";
+	}
+
+	// NOUVEAU : texte complet affiché au survol et dans le menu contextuel
+	protected String buildNodeInfoText(N node) {
+		int depth = computeDepth(node);
+		int height = computeSubtreeHeight(node);
+		StringBuilder sb = new StringBuilder();
+		sb.append("Valeur : ").append(node.getValue()).append("\n");
+		sb.append("Profondeur : ").append(depth).append("\n");
+		sb.append("Hauteur du sous-arbre : ").append(height);
+		sb.append(extraNodeInfo(node));
+		return sb.toString();
+	}
+
+	// NOUVEAU : tooltip au survol
+	@Override
+	public String getToolTipText(MouseEvent event) {
+		N node = findNodeAt(event.getX(), event.getY());
+		if (node == null) {
+			return null;
+		}
+		String text = buildNodeInfoText(node).replace("\n", "<br>");
+		return "<html>" + text + "</html>";
+	}
+
+	// NOUVEAU : menu contextuel au clic droit
+	private void setupContextMenu() {
+		addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				maybeShowPopup(e);
+			}
+
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				maybeShowPopup(e);
+			}
+		});
+	}
+
+	private void maybeShowPopup(MouseEvent e) {
+		if (!e.isPopupTrigger()) {
+			return;
+		}
+		N node = findNodeAt(e.getX(), e.getY());
+		if (node == null) {
+			return;
+		}
+
+		JPopupMenu menu = new JPopupMenu();
+
+		JMenuItem infoItem = new JMenuItem("Voir les informations");
+		infoItem.addActionListener(a -> JOptionPane.showMessageDialog(this,
+				buildNodeInfoText(node), "Informations sur le nœud", JOptionPane.INFORMATION_MESSAGE));
+		menu.add(infoItem);
+
+		JMenuItem deleteItem = new JMenuItem("Supprimer ce nœud (" + node.getValue() + ")");
+		deleteItem.addActionListener(a -> deleteInt(node.getValue()));
+		menu.add(deleteItem);
+
+		menu.show(this, e.getX(), e.getY());
+	}
+
+	// ================== NAVIGATION (pan & zoom) ==================
+
+	private void setupNavigation() {
+		addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				lastMouseX = e.getX();
+				lastMouseY = e.getY();
+			}
+		});
+
+		addMouseMotionListener(new MouseMotionAdapter() {
+			@Override
+			public void mouseDragged(MouseEvent e) {
+				offsetX += e.getX() - lastMouseX;
+				offsetY += e.getY() - lastMouseY;
+				lastMouseX = e.getX();
+				lastMouseY = e.getY();
+				repaint();
+			}
+		});
+
+		addMouseWheelListener(this::handleZoom);
+	}
+
+	private void handleZoom(MouseWheelEvent e) {
+		double zoomFactor = (e.getWheelRotation() < 0) ? 1.1 : 0.9;
+		double mouseX = e.getX();
+		double mouseY = e.getY();
+		offsetX = mouseX - (mouseX - offsetX) * zoomFactor;
+		offsetY = mouseY - (mouseY - offsetY) * zoomFactor;
+		scale *= zoomFactor;
+		repaint();
+	}
+	
+	// ================== EXPORT IMAGE / PDF ==================
+
+	public java.awt.image.BufferedImage renderFullTreeImage() {
+		N root = model.getRoot();
+
+		if (root == null) {
+			java.awt.image.BufferedImage empty =
+					new java.awt.image.BufferedImage(300, 100, java.awt.image.BufferedImage.TYPE_INT_RGB);
+			Graphics g = empty.getGraphics();
+			g.setColor(Color.WHITE);
+			g.fillRect(0, 0, 300, 100);
+			g.setColor(Color.BLACK);
+			g.drawString("Arbre vide", 120, 50);
+			g.dispose();
+			return empty;
+		}
+
+		Map<N, Point2D.Double> fullPositions = snapshotLayout();
+
+		double maxX = 0;
+		double maxY = 0;
+		for (Point2D.Double p : fullPositions.values()) {
+			maxX = Math.max(maxX, p.x);
+			maxY = Math.max(maxY, p.y);
+		}
+
+		int margin = 60;
+		int width = (int) maxX + margin;
+		int height = (int) maxY + margin;
+
+		java.awt.image.BufferedImage image =
+				new java.awt.image.BufferedImage(width, height, java.awt.image.BufferedImage.TYPE_INT_RGB);
+		Graphics2D g2 = image.createGraphics();
+		g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+		g2.setColor(Color.WHITE);
+		g2.fillRect(0, 0, width, height);
+
+		Map<N, Point2D.Double> backup = new IdentityHashMap<>(positions);
+		positions.clear();
+		positions.putAll(fullPositions);
+		drawTree(g2, root);
+		positions.clear();
+		positions.putAll(backup);
+
+		g2.dispose();
+		return image;
+	}
+
+	public void exportAsPNG(java.io.File file) throws java.io.IOException {
+		java.awt.image.BufferedImage image = renderFullTreeImage();
+		javax.imageio.ImageIO.write(image, "png", file);
+	}
+
+	public void exportAsPDF(java.io.File file) throws java.io.IOException {
+		java.awt.image.BufferedImage image = renderFullTreeImage();
+		try (org.apache.pdfbox.pdmodel.PDDocument doc = new org.apache.pdfbox.pdmodel.PDDocument()) {
+			org.apache.pdfbox.pdmodel.PDPage page = new org.apache.pdfbox.pdmodel.PDPage(
+					new org.apache.pdfbox.pdmodel.common.PDRectangle(image.getWidth(), image.getHeight()));
+			doc.addPage(page);
+			org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject pdImage =
+					org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory.createFromImage(doc, image);
+			try (org.apache.pdfbox.pdmodel.PDPageContentStream content =
+					new org.apache.pdfbox.pdmodel.PDPageContentStream(doc, page)) {
+				content.drawImage(pdImage, 0, 0, image.getWidth(), image.getHeight());
+			}
+			doc.save(file);
+		}
+	}
+
+	// ================== EXPORT LATEX (TikZ) ==================
+
+	public String generateTikzCode() {
+		N root = model.getRoot();
+		int treeHeight = model.getHeight();
+
+		StringBuilder sb = new StringBuilder();
+		sb.append("\\begin{tikzpicture}[\n");
+		sb.append("  level distance=15mm,\n");
+
+		double dist = 32;
+		for (int lvl = 1; lvl <= Math.max(treeHeight, 1); lvl++) {
+			sb.append("  level ").append(lvl).append("/.style={sibling distance=")
+					.append((int) Math.max(dist, 8)).append("mm},\n");
+			dist = dist / 1.8;
+		}
+
+		sb.append("  every node/.style={circle, draw, minimum size=7mm, inner sep=0pt}\n");
+		sb.append("]\n");
+
+		if (root == null) {
+			sb.append("\\node {$\\varnothing$};\n");
+		} else {
+			appendTikzNode(sb, root, 1);
+			sb.append(";\n");
+		}
+
+		sb.append("\\end{tikzpicture}\n");
+		return sb.toString();
+	}
+
+	private void appendTikzNode(StringBuilder sb, N node, int depth) {
+		if (depth == 1) {
+			sb.append("\\node {").append(node.getValue()).append("}");
+		} else {
+			sb.append("node {").append(node.getValue()).append("}");
+		}
+
+		if (node.getLeft() != null || node.getRight() != null) {
+			sb.append("\n");
+			indent(sb, depth);
+			if (node.getLeft() != null) {
+				sb.append("child { ");
+				appendTikzNode(sb, node.getLeft(), depth + 1);
+				sb.append(" }");
+			} else {
+				sb.append("child[missing] {}");
+			}
+			sb.append("\n");
+			indent(sb, depth);
+			if (node.getRight() != null) {
+				sb.append("child { ");
+				appendTikzNode(sb, node.getRight(), depth + 1);
+				sb.append(" }");
+			} else {
+				sb.append("child[missing] {}");
+			}
+		}
+	}
+
+	private void indent(StringBuilder sb, int depth) {
+		for (int i = 0; i < depth; i++) {
+			sb.append("  ");
+		}
+	}
+	
+	// ================== SUPPORT POUR LE MODE QUIZ ==================
+
+	protected java.util.function.Consumer<Integer> onNodeClickedListener = null;
+
+	public void setOnNodeClicked(java.util.function.Consumer<Integer> listener) {
+		this.onNodeClickedListener = listener;
+	}
+
+	public java.util.List<Integer> getAllValues() {
+		java.util.List<Integer> values = new java.util.ArrayList<>();
+		collectValues(model.getRoot(), values);
+		return values;
+	}
+
+	private void collectValues(N node, java.util.List<Integer> acc) {
+		if (node == null) {
+			return;
+		}
+		collectValues(node.getLeft(), acc);
+		acc.add(node.getValue());
+		collectValues(node.getRight(), acc);
+	}
+
+	// Ajout direct au modèle, sans animation ni vérification de "busy" — sert uniquement à générer l'arbre du quiz
+	public void quietAdd(int v) {
+		model.add(v);
+	}
+
+	public void clearTree() {
+		model.setRoot(null);
+		repaint();
+	}
+
+	// Si la valeur était insérée maintenant, quel nœud existant deviendrait son parent ?
+	public Integer getInsertionParentValue(int value) {
+		N current = model.getRoot();
+		Integer parentValue = null;
+		java.util.Comparator<Integer> cmp = model.getComparator();
+		while (current != null) {
+			parentValue = current.getValue();
+			int c = cmp.compare(value, current.getValue());
+			if (c == 0) {
+				return null; // déjà présent
+			}
+			current = (c < 0) ? current.getLeft() : current.getRight();
+		}
+		return parentValue;
+	}
+
+	public Integer getDepthOfValue(int value) {
+		N node = findNodeByValue(model.getRoot(), value);
+		return (node == null) ? null : computeDepth(node);
+	}
+
+	public Integer getSubtreeHeightOfValue(int value) {
+		N node = findNodeByValue(model.getRoot(), value);
+		return (node == null) ? null : computeSubtreeHeight(node);
+	}
+
+	private N findNodeByValue(N node, int value) {
+		if (node == null) {
+			return null;
+		}
+		int c = model.getComparator().compare(value, node.getValue());
+		if (c == 0) {
+			return node;
+		}
+		return (c < 0) ? findNodeByValue(node.getLeft(), value) : findNodeByValue(node.getRight(), value);
+	}
+
+	// Point d'extension : sans objet pour un ABR, surchargé dans AVLPanel
+	public Integer getBalanceFactorOfValue(int value) {
+		return null;
+	}
+
+	public boolean supportsBalanceFactorQuestions() {
+		return false;
+	}
+
+	// Surlignage temporaire vert/rouge, indépendant du système highlightedValue/replacementValue des animations
+	private Integer feedbackFlashValue = null;
+	private boolean feedbackFlashCorrect = false;
+
+	public void flashFeedback(Integer value, boolean correct) {
+		feedbackFlashValue = value;
+		feedbackFlashCorrect = correct;
+		repaint();
+		javax.swing.Timer t = new javax.swing.Timer(1400, e -> {
+			((javax.swing.Timer) e.getSource()).stop();
+			feedbackFlashValue = null;
+			repaint();
+		});
+		t.setRepeats(false);
+		t.start();
+	}
+}

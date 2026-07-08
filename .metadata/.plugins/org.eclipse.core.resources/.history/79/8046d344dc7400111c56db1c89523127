@@ -1,5 +1,0 @@
-package binarytree;
-
-public interface ValuedNode implements Node {
-
-}

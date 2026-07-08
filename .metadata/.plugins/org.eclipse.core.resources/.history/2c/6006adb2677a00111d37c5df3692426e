@@ -1,0 +1,547 @@
+package binarytree;
+
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
+import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
+
+import tree.BSTTree;
+import utils.StyledButton;
+import utils.StyledCheckBox;
+import utils.StyledTabbedPane;
+
+public class Treegame {
+	
+	
+	// ATTRIBUTS D'INSTANCE
+		
+	
+	
+	
+	
+	private static final int GEN_NUMBER = 10;
+	private static final int GEN_MAX = 100;
+	private static final int GEN_MIN = 1;
+	
+	private static final int FRAME_WIDTH = 1400;
+	private static final int FRAME_HEIGHT = 800;
+	
+	 /**
+     * Fenêtre du programme.
+     */
+	private JFrame frame;
+	
+	 /**
+     * Les différents boutons correspondants à des actions diverses
+     * ayant des effets sur les arbres.
+     */
+	private JButton addButton;
+	private JButton deleteButton;
+	private JButton searchButton;
+	private JButton generateButton;
+	private JButton resetButton;
+	
+	
+	/**
+	 * Les différents label qui permettent d'exprimer les différentes
+	 * propriétés des arbres.
+	 */
+	
+	private JLabel heightLabel;
+	private JLabel sizeLabel;
+	private JLabel distanceLabel;
+	
+	
+	
+	
+	
+	private JTabbedPane tabbedPane; // NOUVEAU
+		
+	/**
+	 * Deux panel
+	 * propriétés des arbres.
+	 */
+	private BSTPanel bstPanel;
+	private AVLPanel avlPanel;
+	
+	private JCheckBox animationCheckBox;
+	
+	
+	
+	private JCheckBox stepModeCheckBox;   // NOUVEAU
+	private JButton nextStepButton;       // NOUVEAU
+	
+	
+	
+	private JButton preorderButton;
+	private JButton inorderButton;
+	private JButton postorderButton;
+	private JButton levelOrderButton;
+	
+	
+	private JButton exportButton; // NOUVEAU
+	
+	private List<HistoryEntry> history = new ArrayList<>(); // NOUVEAU
+	private JButton replayButton; // NOUVEAU
+
+	private static class HistoryEntry { // NOUVEAU
+	    enum Type { ADD, DELETE }
+	    final Type type;
+	    final int value;
+	    HistoryEntry(Type type, int value) {
+	        this.type = type;
+	        this.value = value;
+	    }
+	}
+	
+	
+	// CONSTRUCTEURS
+	
+	public Treegame() {
+		 this.frame = createFrame();
+		 this.addButton = new StyledButton("Ajouter une valeur");
+		 this.deleteButton = new StyledButton("Supprimer une valeur");
+		 this.searchButton = new StyledButton("Chercher une valeur");
+		 this.generateButton = new StyledButton("Générer un arbre");
+		 this.resetButton = new StyledButton("Supprimer l'arbre");
+		 this.heightLabel = new JLabel("Hauteur : 0");
+		 this.sizeLabel = new JLabel("Taille : 0");
+		 this.distanceLabel = new JLabel("Distance : 0");
+		 this.tabbedPane = new StyledTabbedPane();
+		 this.bstPanel = new BSTPanel();
+		 this.avlPanel = new AVLPanel();
+		 avlPanel.setStateListener(() -> { // NOUVEAU
+			    refresh();
+			    updateStepButtonState();
+			});
+		 this.stepModeCheckBox = new StyledCheckBox("Pas à pas");           // NOUVEAU
+		 this.nextStepButton = new StyledButton("Suivant");             // NOUVEAU
+		 this.nextStepButton.setEnabled(false);        
+		 this.animationCheckBox = new StyledCheckBox("Mode animation");
+		 this.preorderButton = new StyledButton("Parcours préfixe");
+		 this.inorderButton = new StyledButton("Parcours infixe");
+		 this.postorderButton = new StyledButton("Parcours postfixe");
+		 this.levelOrderButton = new StyledButton("Parcours en largeur");
+		 this.replayButton = new StyledButton("Rejouer l'historique"); // NOUVEAU
+		 this.exportButton = new StyledButton("Exporter l'arbre"); // NOUVEAU
+		 placeComponents();
+		 connectControllers();
+	}
+	// COMMANDES
+	
+	public void display() {
+		refresh();
+		frame.pack();
+	    frame.setLocationRelativeTo(null);
+	    frame.setVisible(true);
+	}
+	// OUTILS
+	
+	 private JFrame createFrame() {	        
+	        JFrame f = new JFrame("Jeu d'arbre");
+	        f.setPreferredSize(new Dimension(FRAME_WIDTH, FRAME_HEIGHT));
+	        return f;
+	 }
+	    
+	 
+    private void placeComponents() {
+        JPanel p = new JPanel(new BorderLayout());
+        { //--
+        	JPanel q = new JPanel();
+        	{ //--
+                q.add(addButton);
+                q.add(deleteButton);
+                q.add(searchButton);
+                q.add(generateButton);
+                q.add(resetButton);
+                q.add(exportButton); // NOUVEAU
+                q.add(replayButton);
+        	} //--
+        	p.add(q,BorderLayout.NORTH);
+        	q = new JPanel(new BorderLayout());
+        	{ //--
+        		JPanel r = new JPanel();
+        		{ //--
+        		    r.add(preorderButton);
+        		    r.add(inorderButton);
+        		    r.add(postorderButton);
+        		    r.add(levelOrderButton);
+        		} //--
+        		q.add(r,BorderLayout.NORTH);
+        		r = new JPanel();
+        		{ //--
+            		r.add(animationCheckBox);	
+            	    r.add(stepModeCheckBox);   // NOUVEAU
+            	    r.add(nextStepButton);      // NOUVEAU
+        		} //--
+        		q.add(r,BorderLayout.SOUTH);
+        	} //--
+        	p.add(q,BorderLayout.CENTER);
+        	q = new JPanel();
+        	{ //--
+        		q.add(heightLabel);
+        		q.add(sizeLabel);
+        		q.add(distanceLabel);
+        	} //--
+        	p.add(q,BorderLayout.SOUTH);
+        } //--
+        frame.add(p, BorderLayout.NORTH);
+        tabbedPane = new StyledTabbedPane() ;
+        {//--
+        	tabbedPane.addTab("ABR",bstPanel);
+        	tabbedPane.addTab("AVL",avlPanel);
+        }//--
+        frame.add(tabbedPane,BorderLayout.CENTER);
+        frame.setJMenuBar(createMenuBar()); // NOUVEAU
+    } 
+	
+    private void connectControllers() {
+    	addButton.addActionListener(new ActionListener() {
+    	    @Override
+    	    public void actionPerformed(ActionEvent arg0) {
+    	        String vs = JOptionPane.showInputDialog(null, "Entrez la valeur.");
+    	        if (vs != null) {
+    	            int v = Integer.parseInt(vs);
+    	            history.add(new HistoryEntry(HistoryEntry.Type.ADD, v)); // NOUVEAU
+    	            bstPanel.addInt(v, () -> { refresh(); updateStepButtonState(); });
+    	            avlPanel.addInt(v, () -> { refresh(); updateStepButtonState(); });
+    	            updateStepButtonState();
+    	            refresh();
+    	        }
+    	    }
+    	});
+    	
+    	deleteButton.addActionListener(new ActionListener() {
+    	    @Override
+    	    public void actionPerformed(ActionEvent arg0) {
+    	        String vs = JOptionPane.showInputDialog(null, "Entrez la valeur.");
+    	        if (vs != null) {
+    	            int v = Integer.parseInt(vs);
+    	            history.add(new HistoryEntry(HistoryEntry.Type.DELETE, v)); // NOUVEAU
+    	            bstPanel.deleteInt(v, () -> { // MODIFIÉ
+    	                refresh();
+    	                updateStepButtonState();
+    	            });
+    	            avlPanel.deleteInt(v, () -> { // MODIFIÉ
+    	                refresh();
+    	                updateStepButtonState();
+    	            });
+    	            updateStepButtonState();
+    	            refresh();
+    	        }
+    	    }
+    	});
+    	
+    	searchButton.addActionListener(new ActionListener() {
+    	    @Override
+    	    public void actionPerformed(ActionEvent arg0) {
+    	        String vs = JOptionPane.showInputDialog(null, "Entrez la valeur.");
+    	        if (vs != null) {
+    	            int v = Integer.parseInt(vs);
+    	            bstPanel.searchInt(v, () -> {
+    	                refresh();
+    	                updateStepButtonState();
+    	            });
+    	            avlPanel.searchInt(v, () -> {
+    	                refresh();
+    	                updateStepButtonState();
+    	            });
+    	            updateStepButtonState();
+    	        }
+    	    }
+    	});
+     	
+    	generateButton.addActionListener(new ActionListener() {
+    	    @Override
+    	    public void actionPerformed(ActionEvent arg0) {
+    	        animationCheckBox.setSelected(false);      // NOUVEAU
+    	        stepModeCheckBox.setSelected(false);        // NOUVEAU
+    	        bstPanel.setAnimationMode(false);            // NOUVEAU
+    	        avlPanel.setAnimationMode(false);            // NOUVEAU
+    	        bstPanel.setStepMode(false);                 // NOUVEAU
+    	        avlPanel.setStepMode(false);                 // NOUVEAU
+    	        generateSequential(GEN_NUMBER);
+    	    }
+    	});
+     	
+     	resetButton.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				bstPanel.getModel().setRoot(null);
+				bstPanel.repaint();
+				avlPanel.getModel().setRoot(null);
+				avlPanel.repaint();
+				refresh();
+			}
+     		
+     	});
+     	
+     	
+     	animationCheckBox.addActionListener(new ActionListener() {
+     	    @Override
+     	    public void actionPerformed(ActionEvent arg0) {
+     	        boolean enabled = animationCheckBox.isSelected();
+     	        bstPanel.setAnimationMode(enabled);
+     	        avlPanel.setAnimationMode(enabled);
+     	    }
+     	});
+     	
+     	
+     	stepModeCheckBox.addActionListener(new ActionListener() {
+     	    @Override
+     	    public void actionPerformed(ActionEvent arg0) {
+     	        boolean enabled = stepModeCheckBox.isSelected();
+     	        bstPanel.setStepMode(enabled);
+     	        avlPanel.setStepMode(enabled);
+     	    }
+     	});
+
+     	nextStepButton.addActionListener(new ActionListener() {
+     	    @Override
+     	    public void actionPerformed(ActionEvent arg0) {
+     	        bstPanel.nextStep();
+     	        avlPanel.nextStep();
+     	        //updateStats();
+     	        updateStepButtonState(); // NOUVEAU
+     	    }
+     	});
+     	
+     	tabbedPane.addChangeListener(e -> refresh()); // NOUVEAU
+     	
+     	preorderButton.addActionListener(e -> {
+     	    bstPanel.traversePreorder(() -> { refresh(); updateStepButtonState(); });
+     	    avlPanel.traversePreorder(() -> { refresh(); updateStepButtonState(); });
+     	    updateStepButtonState();
+     	});
+     	inorderButton.addActionListener(e -> {
+     	    bstPanel.traverseInorder(() -> { refresh(); updateStepButtonState(); });
+     	    avlPanel.traverseInorder(() -> { refresh(); updateStepButtonState(); });
+     	    updateStepButtonState();
+     	});
+     	postorderButton.addActionListener(e -> {
+     	    bstPanel.traversePostorder(() -> { refresh(); updateStepButtonState(); });
+     	    avlPanel.traversePostorder(() -> { refresh(); updateStepButtonState(); });
+     	    updateStepButtonState();
+     	});
+     	levelOrderButton.addActionListener(e -> {
+     	    bstPanel.traverseLevelOrder(() -> { refresh(); updateStepButtonState(); });
+     	    avlPanel.traverseLevelOrder(() -> { refresh(); updateStepButtonState(); });
+     	    updateStepButtonState();
+     	});
+     	
+     	replayButton.addActionListener(new ActionListener() {
+     	    @Override
+     	    public void actionPerformed(ActionEvent arg0) {
+     	        replayHistory();
+     	    }
+     	});
+     	
+     	exportButton.addActionListener(new ActionListener() {
+     	    @Override
+     	    public void actionPerformed(ActionEvent arg0) {
+     	        AbstractTreePanel<?> current = (tabbedPane.getSelectedIndex() == 0) ? bstPanel : avlPanel;
+
+     	        Object[] options = {"PNG", "PDF"};
+     	        int choice = JOptionPane.showOptionDialog(null, "Format d'export ?", "Exporter l'arbre",
+     	                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+     	        if (choice == -1) {
+     	            return;
+     	        }
+
+     	        javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+     	        int result = chooser.showSaveDialog(null);
+     	        if (result != javax.swing.JFileChooser.APPROVE_OPTION) {
+     	            return;
+     	        }
+     	        java.io.File file = chooser.getSelectedFile();
+
+     	        try {
+     	            if (choice == 0) {
+     	                if (!file.getName().toLowerCase().endsWith(".png")) {
+     	                    file = new java.io.File(file.getAbsolutePath() + ".png");
+     	                }
+     	                current.exportAsPNG(file);
+     	            } else {
+     	                if (!file.getName().toLowerCase().endsWith(".pdf")) {
+     	                    file = new java.io.File(file.getAbsolutePath() + ".pdf");
+     	                }
+     	                current.exportAsPDF(file);
+     	            }
+     	            JOptionPane.showMessageDialog(null, "Export réussi : " + file.getAbsolutePath());
+     	        } catch (Exception ex) {
+     	            JOptionPane.showMessageDialog(null, "Erreur lors de l'export : " + ex.getMessage());
+     	        }
+     	    }
+     	});
+    }
+    
+    private void refresh() {
+        BSTTree<?, Integer> model = (tabbedPane.getSelectedIndex() == 0)
+                ? bstPanel.getModel()
+                : avlPanel.getModel();
+        heightLabel.setText("Hauteur : " + model.getHeight());
+        sizeLabel.setText("Taille : " + model.getSize());
+        distanceLabel.setText("Distance : " + model.getDistance());
+    }
+	
+	private static int getRandom(int min, int max) {
+		int range = (max - min) + 1;
+     	int random = (int) ((range * Math.random()) + min);
+		return random;
+	}
+	
+	
+	private void updateStepButtonState() {
+	    boolean animating = bstPanel.isAnimating() || avlPanel.isAnimating();
+	    boolean busy = bstPanel.isBusy() || avlPanel.isBusy();
+	    nextStepButton.setEnabled(animating);
+	    addButton.setEnabled(!busy);
+	    deleteButton.setEnabled(!busy);
+	    generateButton.setEnabled(!busy);
+	    animationCheckBox.setEnabled(!busy);  // NOUVEAU
+	    stepModeCheckBox.setEnabled(!busy);   // NOUVEAU
+	}
+	
+	private void generateSequential(int remaining) {
+	    if (remaining <= 0) {
+	        refresh();
+	        updateStepButtonState();
+	        return;
+	    }
+	    int r = getRandom(GEN_MIN, GEN_MAX);
+	    history.add(new HistoryEntry(HistoryEntry.Type.ADD, r)); // NOUVEAU
+	    bstPanel.addInt(r, () -> {
+	        avlPanel.addInt(r, () -> {
+	            generateSequential(remaining - 1);
+	        });
+	    });
+	    updateStepButtonState();
+	}
+	
+	
+	private void replayHistory() { // NOUVEAU
+	    if (history.isEmpty()) {
+	        return;
+	    }
+
+	    boolean prevAnimation = animationCheckBox.isSelected();
+	    boolean prevStepMode = stepModeCheckBox.isSelected();
+
+	    animationCheckBox.setSelected(true);
+	    stepModeCheckBox.setSelected(false);
+	    bstPanel.setAnimationMode(true);
+	    avlPanel.setAnimationMode(true);
+	    bstPanel.setStepMode(false);
+	    avlPanel.setStepMode(false);
+
+	    bstPanel.getModel().setRoot(null);
+	    avlPanel.getModel().setRoot(null);
+	    bstPanel.repaint();
+	    avlPanel.repaint();
+	    refresh();
+
+	    setControlsEnabledDuringReplay(false);
+	    replayStep(0, prevAnimation, prevStepMode);
+	}
+
+	private void replayStep(int index, boolean prevAnimation, boolean prevStepMode) { // NOUVEAU
+	    if (index >= history.size()) {
+	        animationCheckBox.setSelected(prevAnimation);
+	        stepModeCheckBox.setSelected(prevStepMode);
+	        bstPanel.setAnimationMode(prevAnimation);
+	        avlPanel.setAnimationMode(prevAnimation);
+	        bstPanel.setStepMode(prevStepMode);
+	        avlPanel.setStepMode(prevStepMode);
+	        setControlsEnabledDuringReplay(true);
+	        refresh();
+	        updateStepButtonState();
+	        return;
+	    }
+
+	    HistoryEntry entry = history.get(index);
+	    Runnable next = () -> replayStep(index + 1, prevAnimation, prevStepMode);
+
+	    if (entry.type == HistoryEntry.Type.ADD) {
+	        bstPanel.addInt(entry.value, () -> avlPanel.addInt(entry.value, next));
+	    } else {
+	        bstPanel.deleteInt(entry.value, () -> avlPanel.deleteInt(entry.value, next));
+	    }
+	}
+
+	private void setControlsEnabledDuringReplay(boolean enabled) { // NOUVEAU
+	    addButton.setEnabled(enabled);
+	    deleteButton.setEnabled(enabled);
+	    searchButton.setEnabled(enabled);
+	    generateButton.setEnabled(enabled);
+	    resetButton.setEnabled(enabled);
+	    replayButton.setEnabled(enabled);
+	    animationCheckBox.setEnabled(enabled);
+	    stepModeCheckBox.setEnabled(enabled);
+	}
+	
+	private JMenuBar createMenuBar() { // NOUVEAU
+	    JMenuBar menuBar = new JMenuBar();
+	    JMenu exportMenu = new JMenu("Export");
+	    JMenuItem tikzItem = new JMenuItem("Générer code LaTeX (TikZ)");
+	    tikzItem.addActionListener(e -> showTikzDialog());
+	    exportMenu.add(tikzItem);
+	    menuBar.add(exportMenu);
+	    return menuBar;
+	}
+
+	private void showTikzDialog() { // NOUVEAU
+	    AbstractTreePanel<?> current = (tabbedPane.getSelectedIndex() == 0) ? bstPanel : avlPanel;
+	    String code = current.generateTikzCode();
+
+	    JTextArea textArea = new JTextArea(code);
+	    textArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
+	    textArea.setEditable(true);
+	    JScrollPane scrollPane = new JScrollPane(textArea);
+	    scrollPane.setPreferredSize(new Dimension(600, 400));
+
+	    JButton copyButton = new JButton("Copier dans le presse-papier");
+	    copyButton.addActionListener(e -> {
+	        StringSelection selection = new StringSelection(textArea.getText());
+	        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
+	    });
+
+	    JPanel panel = new JPanel(new BorderLayout());
+	    panel.add(scrollPane, BorderLayout.CENTER);
+	    panel.add(copyButton, BorderLayout.SOUTH);
+
+	    JOptionPane.showMessageDialog(frame, panel, "Code TikZ de l'arbre", JOptionPane.PLAIN_MESSAGE);
+	}
+	
+	// POINT D'ENTREE
+	
+	public static void main(String[] args) {
+		SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                new Treegame().display();
+            }
+		});
+	}
+	
+	
+}

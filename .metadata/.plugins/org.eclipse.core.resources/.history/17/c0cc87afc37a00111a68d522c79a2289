@@ -1,0 +1,346 @@
+package binarytree;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+import javax.swing.Timer;
+
+import node.StdValuedNode;
+import tree.StdBSTTree;
+
+public class BSTPanel extends AbstractTreePanel<StdValuedNode<Integer>> {
+
+	private List<Integer> pendingPath = null;
+	private int pendingIndex = 0;
+	private Runnable pendingFinalAction = null;
+	private Runnable pendingOnFinished = null;
+
+	public BSTPanel() {
+		super();
+		model = new StdBSTTree<StdValuedNode<Integer>, Integer>(Comparator.naturalOrder(), StdValuedNode::new);
+	}
+
+	@Override
+	public boolean isAnimating() {
+		return pendingPath != null;
+	}
+
+	// COMMANDES
+
+	public void addInt(Integer i) {
+		addInt(i, null);
+	}
+
+	public void addInt(Integer i, Runnable onFinished) {
+		if (busy) {
+			return;
+		}
+		if (!animationMode) {
+			model.add(i);
+			repaint();
+			if (onFinished != null) {
+				onFinished.run();
+			}
+			return;
+		}
+		busy = true;
+		List<Integer> path = computeSearchPath(i);
+		model.add(i);
+		if (stepMode) {
+			startStepAnimation(path, null, onFinished);
+		} else {
+			animatePath(path, onFinished);
+		}
+	}
+
+	public void deleteInt(Integer i) {
+		deleteInt(i, null);
+	}
+
+	public void deleteInt(Integer i, Runnable onFinished) {
+		if (busy) {
+			return;
+		}
+		if (!animationMode) {
+			model.delete(i);
+			repaint();
+			if (onFinished != null) {
+				onFinished.run();
+			}
+			return;
+		}
+
+		busy = true;
+		boolean found = model.isIn(i);
+		List<Integer> path = computeDeletePath(i);
+		Runnable finalAction = found ? () -> model.delete(i) : null;
+
+		if (stepMode) {
+			startStepAnimation(path, finalAction, onFinished);
+		} else {
+			animateThenDelete(path, i, found, onFinished);
+		}
+	}
+
+	public void searchInt(Integer i, Runnable onFinished) {
+		if (busy) {
+			return;
+		}
+		if (!animationMode) {
+			if (onFinished != null) {
+				onFinished.run();
+			}
+			return;
+		}
+
+		busy = true;
+		boolean found = model.isIn(i);
+		List<Integer> path = computeSearchPath(i);
+
+		Runnable markResult = () -> {
+			replacementValue = found ? i : null;
+			repaint();
+		};
+
+		if (stepMode) {
+			startStepAnimation(path, markResult, onFinished);
+		} else {
+			animateSearchThenMark(path, markResult, onFinished);
+		}
+	}
+
+	// PARCOURS
+
+	public void traversePreorder(Runnable onFinished) {
+		runTraversal(preorderValues(model.getRoot(), new ArrayList<>()), onFinished);
+	}
+
+	public void traverseInorder(Runnable onFinished) {
+		runTraversal(inorderValues(model.getRoot(), new ArrayList<>()), onFinished);
+	}
+
+	public void traversePostorder(Runnable onFinished) {
+		runTraversal(postorderValues(model.getRoot(), new ArrayList<>()), onFinished);
+	}
+
+	public void traverseLevelOrder(Runnable onFinished) {
+		runTraversal(levelOrderValues(model.getRoot()), onFinished);
+	}
+
+	private void runTraversal(List<Integer> path, Runnable onFinished) {
+		if (busy) {
+			if (onFinished != null) {
+				onFinished.run();
+			}
+			return;
+		}
+		busy = true;
+		if (stepMode) {
+			startStepAnimation(path, null, onFinished);
+		} else {
+			animatePath(path, onFinished);
+		}
+	}
+
+	private List<Integer> preorderValues(StdValuedNode<Integer> node, List<Integer> acc) {
+		if (node == null) {
+			return acc;
+		}
+		acc.add(node.getValue());
+		preorderValues(node.getLeft(), acc);
+		preorderValues(node.getRight(), acc);
+		return acc;
+	}
+
+	private List<Integer> inorderValues(StdValuedNode<Integer> node, List<Integer> acc) {
+		if (node == null) {
+			return acc;
+		}
+		inorderValues(node.getLeft(), acc);
+		acc.add(node.getValue());
+		inorderValues(node.getRight(), acc);
+		return acc;
+	}
+
+	private List<Integer> postorderValues(StdValuedNode<Integer> node, List<Integer> acc) {
+		if (node == null) {
+			return acc;
+		}
+		postorderValues(node.getLeft(), acc);
+		postorderValues(node.getRight(), acc);
+		acc.add(node.getValue());
+		return acc;
+	}
+
+	private List<Integer> levelOrderValues(StdValuedNode<Integer> root) {
+		List<Integer> acc = new ArrayList<>();
+		if (root == null) {
+			return acc;
+		}
+		ArrayDeque<StdValuedNode<Integer>> bfsQueue = new ArrayDeque<>();
+		bfsQueue.add(root);
+		while (!bfsQueue.isEmpty()) {
+			StdValuedNode<Integer> n = bfsQueue.poll();
+			acc.add(n.getValue());
+			if (n.getLeft() != null) {
+				bfsQueue.add(n.getLeft());
+			}
+			if (n.getRight() != null) {
+				bfsQueue.add(n.getRight());
+			}
+		}
+		return acc;
+	}
+
+	// MOTEUR D'ANIMATION (propre à BSTPanel)
+
+	private void animatePath(List<Integer> path, Runnable onFinished) {
+		final int[] index = {0};
+		Timer timer = new Timer(500, null);
+		timer.addActionListener(e -> {
+			if (index[0] < path.size()) {
+				highlightedValue = path.get(index[0]);
+				repaint();
+				index[0]++;
+			} else {
+				timer.stop();
+				highlightedValue = null;
+				repaint();
+				busy = false;
+				if (onFinished != null) {
+					onFinished.run();
+				}
+			}
+		});
+		timer.start();
+	}
+
+	private void animateSearchThenMark(List<Integer> path, Runnable finalAction, Runnable onFinished) {
+		final int[] index = {0};
+		Timer timer = new Timer(500, null);
+		timer.addActionListener(e -> {
+			if (index[0] < path.size()) {
+				highlightedValue = path.get(index[0]);
+				repaint();
+				index[0]++;
+			} else {
+				timer.stop();
+				highlightedValue = null;
+				finalAction.run();
+				busy = false;
+				if (onFinished != null) {
+					onFinished.run();
+				}
+			}
+		});
+		timer.start();
+	}
+
+	private void animateThenDelete(List<Integer> path, int valueToDelete, boolean found, Runnable onFinished) {
+		final int[] index = {0};
+		Timer timer = new Timer(500, null);
+		timer.addActionListener(e -> {
+			if (index[0] < path.size()) {
+				highlightedValue = path.get(index[0]);
+				repaint();
+				index[0]++;
+			} else {
+				timer.stop();
+				highlightedValue = null;
+				replacementValue = null;
+				if (found) {
+					model.delete(valueToDelete);
+				}
+				repaint();
+				busy = false;
+				if (onFinished != null) {
+					onFinished.run();
+				}
+			}
+		});
+		timer.start();
+	}
+
+	private void startStepAnimation(List<Integer> path, Runnable finalAction, Runnable onFinished) {
+		pendingPath = path;
+		pendingIndex = 0;
+		pendingFinalAction = finalAction;
+		pendingOnFinished = onFinished;
+		highlightedValue = null;
+		repaint();
+	}
+
+	@Override
+	public void nextStep() {
+		if (pendingPath == null) {
+			return;
+		}
+		if (pendingIndex < pendingPath.size()) {
+			highlightedValue = pendingPath.get(pendingIndex);
+			pendingIndex++;
+			repaint();
+		} else {
+			highlightedValue = null;
+			replacementValue = null;
+			if (pendingFinalAction != null) {
+				pendingFinalAction.run();
+			}
+			Runnable finished = pendingOnFinished;
+			pendingPath = null;
+			pendingFinalAction = null;
+			pendingOnFinished = null;
+			busy = false;
+			repaint();
+			if (finished != null) {
+				finished.run();
+			}
+		}
+	}
+
+	private List<Integer> computeSearchPath(int v) {
+		List<Integer> path = new ArrayList<>();
+		StdValuedNode<Integer> current = model.getRoot();
+		Comparator<Integer> cmp = model.getComparator();
+		while (current != null) {
+			path.add(current.getValue());
+			int c = cmp.compare(v, current.getValue());
+			if (c == 0) {
+				break;
+			}
+			current = (c < 0) ? current.getLeft() : current.getRight();
+		}
+		path.add(v);
+		return path;
+	}
+
+	private List<Integer> computeDeletePath(int v) {
+		List<Integer> path = new ArrayList<>();
+		StdValuedNode<Integer> current = model.getRoot();
+		Comparator<Integer> cmp = model.getComparator();
+
+		while (current != null) {
+			path.add(current.getValue());
+			int c = cmp.compare(v, current.getValue());
+			if (c == 0) {
+				break;
+			}
+			current = (c < 0) ? current.getLeft() : current.getRight();
+		}
+
+		replacementValue = null;
+
+		if (current != null && current.getLeft() != null && current.getRight() != null) {
+			StdValuedNode<Integer> successor = current.getRight();
+			while (successor.getLeft() != null) {
+				path.add(successor.getValue());
+				successor = successor.getLeft();
+			}
+			path.add(successor.getValue());
+			replacementValue = successor.getValue();
+		}
+
+		return path;
+	}
+}

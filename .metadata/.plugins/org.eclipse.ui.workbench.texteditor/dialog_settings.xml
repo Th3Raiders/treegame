@@ -4,6 +4,8 @@
 	<section name="java.lang.Class">
 		<item key="replaceBarOpen" value="true"/>
 		<list key="findhistory">
+			<item value="create"/>
+			<item value="generateSequential"/>
 			<item value="addInt"/>
 			<item value="runQueue"/>
 			<item value="addInT"/>

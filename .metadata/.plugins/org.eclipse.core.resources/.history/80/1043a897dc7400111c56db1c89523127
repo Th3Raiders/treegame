@@ -1,7 +1,0 @@
-package binarytree;
-
-public class StdValuedNode extends StdNode {
-	// ATTRIBUTS
-	
-	private int value;
-}

@@ -22,7 +22,7 @@ import tree.StdAVLTree;
 
 public class AVLPanel extends AbstractTreePanel<StdAVLNode<Integer>> {
 
-	private static final int SEARCH_STEP_MS = 900;
+	private static final int SEARCH_STEP_MS = 900;      // valeur de référence à vitesse normale (x1)
 	private static final int TRANSITION_DURATION_MS = 1200;
 	private static final int HOLD_DURATION_MS = 1600;
 	private static final int TRANSITION_FPS = 60;
@@ -91,7 +91,7 @@ public class AVLPanel extends AbstractTreePanel<StdAVLNode<Integer>> {
 			if (stepMode) {
 				onDone.run();
 			} else {
-				Timer t = new Timer(pauseMs, e -> {
+				Timer t = new Timer(scaledDelay(pauseMs), e -> { // MODIFIÉ
 					((Timer) e.getSource()).stop();
 					onDone.run();
 				});
@@ -127,11 +127,12 @@ public class AVLPanel extends AbstractTreePanel<StdAVLNode<Integer>> {
 			transitioning = true;
 			currentT = 0;
 
+			int scaledDuration = scaledDelay(durationMs); // NOUVEAU
 			long startTime = System.currentTimeMillis();
-			Timer timer = new Timer(1000 / TRANSITION_FPS, null);
+			Timer timer = new Timer(1000 / TRANSITION_FPS, null); // fréquence d'affichage, non affectée par la vitesse
 			timer.addActionListener(e -> {
 				long elapsed = System.currentTimeMillis() - startTime;
-				currentT = Math.min(1.0, elapsed / (double) durationMs);
+				currentT = Math.min(1.0, elapsed / (double) scaledDuration); // MODIFIÉ
 				repaint();
 				if (currentT >= 1.0) {
 					((Timer) e.getSource()).stop();
@@ -143,7 +144,7 @@ public class AVLPanel extends AbstractTreePanel<StdAVLNode<Integer>> {
 					if (stepMode) {
 						onDone.run();
 					} else {
-						Timer hold = new Timer(holdMs, ev -> {
+						Timer hold = new Timer(scaledDelay(holdMs), ev -> { // MODIFIÉ
 							((Timer) ev.getSource()).stop();
 							infoMessage = null;
 							repaint();
@@ -283,7 +284,7 @@ public class AVLPanel extends AbstractTreePanel<StdAVLNode<Integer>> {
 					if (stepMode) {
 						onDone.run();
 					} else {
-						Timer hold = new Timer(HOLD_DURATION_MS, e -> {
+						Timer hold = new Timer(scaledDelay(HOLD_DURATION_MS), e -> { // MODIFIÉ
 							((Timer) e.getSource()).stop();
 							onDone.run();
 						});
@@ -402,7 +403,7 @@ public class AVLPanel extends AbstractTreePanel<StdAVLNode<Integer>> {
 					if (stepMode) {
 						onDone.run();
 					} else {
-						Timer hold = new Timer(HOLD_DURATION_MS, e -> {
+						Timer hold = new Timer(scaledDelay(HOLD_DURATION_MS), e -> { // MODIFIÉ
 							((Timer) e.getSource()).stop();
 							onDone.run();
 						});
@@ -584,7 +585,7 @@ public class AVLPanel extends AbstractTreePanel<StdAVLNode<Integer>> {
 				if (stepMode) {
 					onDone.run();
 				} else {
-					Timer hold = new Timer(HOLD_DURATION_MS, e -> {
+					Timer hold = new Timer(scaledDelay(HOLD_DURATION_MS), e -> { // MODIFIÉ
 						((Timer) e.getSource()).stop();
 						onDone.run();
 					});
@@ -653,7 +654,7 @@ public class AVLPanel extends AbstractTreePanel<StdAVLNode<Integer>> {
 
 	@Override
 	protected void paintComponent(Graphics g) {
-		super.paintComponent(g); // NOTE : appelle celui d'AbstractTreePanel, qui gère déjà le cas non-transitioning
+		super.paintComponent(g);
 		Graphics2D overlay = (Graphics2D) g.create();
 
 		if (transitioning) {
@@ -805,7 +806,7 @@ public class AVLPanel extends AbstractTreePanel<StdAVLNode<Integer>> {
 					if (stepMode) {
 						onDone.run();
 					} else {
-						Timer t = new Timer(SEARCH_STEP_MS, e -> {
+						Timer t = new Timer(scaledDelay(SEARCH_STEP_MS), e -> { // MODIFIÉ
 							((Timer) e.getSource()).stop();
 							onDone.run();
 						});
@@ -825,5 +826,62 @@ public class AVLPanel extends AbstractTreePanel<StdAVLNode<Integer>> {
 				onFinished.run();
 			}
 		});
+	}
+
+	@Override
+	protected String extraNodeInfo(StdAVLNode<Integer> node) {
+		int bf = height(node.getLeft()) - height(node.getRight());
+		return "\nFacteur d'équilibre : " + bf + "\nHauteur stockée (AVL) : " + node.getHeight();
+	}
+
+	@Override
+	public Integer getBalanceFactorOfValue(int value) {
+		StdAVLNode<Integer> node = findAVLNodeByValue(model.getRoot(), value);
+		if (node == null) {
+			return null;
+		}
+		return height(node.getLeft()) - height(node.getRight());
+	}
+
+	@Override
+	public boolean supportsBalanceFactorQuestions() {
+		return true;
+	}
+
+	private StdAVLNode<Integer> findAVLNodeByValue(StdAVLNode<Integer> node, int value) {
+		if (node == null) {
+			return null;
+		}
+		int c = model.getComparator().compare(value, node.getValue());
+		if (c == 0) {
+			return node;
+		}
+		return (c < 0) ? findAVLNodeByValue(node.getLeft(), value) : findAVLNodeByValue(node.getRight(), value);
+	}
+	
+	@Override
+	public StdAVLNode<Integer> createNode(int value) {
+		return new StdAVLNode<>(value);
+	}
+
+	@Override
+	public String treeTypeTag() {
+		return "AVL";
+	}
+
+	@Override
+	protected void onTreeImported() {
+		recomputeHeightsBottomUp(model.getRoot());
+	}
+
+	private int recomputeHeightsBottomUp(StdAVLNode<Integer> node) {
+		if (node == null) {
+			return 0;
+		}
+		int leftH = recomputeHeightsBottomUp(node.getLeft());
+		int rightH = recomputeHeightsBottomUp(node.getRight());
+		int h = 1 + Math.max(leftH, rightH);
+		node.setHeight(h);
+		return h;
 	}
 }

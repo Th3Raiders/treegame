@@ -198,7 +198,7 @@ public class BSTPanel extends AbstractTreePanel<StdValuedNode<Integer>> {
 
 	private void animatePath(List<Integer> path, Runnable onFinished) {
 		final int[] index = {0};
-		Timer timer = new Timer(500, null);
+		Timer timer = new Timer(scaledDelay(500), null); // MODIFIÉ
 		timer.addActionListener(e -> {
 			if (index[0] < path.size()) {
 				highlightedValue = path.get(index[0]);
@@ -219,7 +219,7 @@ public class BSTPanel extends AbstractTreePanel<StdValuedNode<Integer>> {
 
 	private void animateSearchThenMark(List<Integer> path, Runnable finalAction, Runnable onFinished) {
 		final int[] index = {0};
-		Timer timer = new Timer(500, null);
+		Timer timer = new Timer(scaledDelay(500), null); // MODIFIÉ
 		timer.addActionListener(e -> {
 			if (index[0] < path.size()) {
 				highlightedValue = path.get(index[0]);
@@ -240,7 +240,7 @@ public class BSTPanel extends AbstractTreePanel<StdValuedNode<Integer>> {
 
 	private void animateThenDelete(List<Integer> path, int valueToDelete, boolean found, Runnable onFinished) {
 		final int[] index = {0};
-		Timer timer = new Timer(500, null);
+		Timer timer = new Timer(scaledDelay(500), null); // MODIFIÉ
 		timer.addActionListener(e -> {
 			if (index[0] < path.size()) {
 				highlightedValue = path.get(index[0]);
@@ -342,5 +342,15 @@ public class BSTPanel extends AbstractTreePanel<StdValuedNode<Integer>> {
 		}
 
 		return path;
+	}
+	
+	@Override
+	public StdValuedNode<Integer> createNode(int value) {
+		return new StdValuedNode<>(value);
+	}
+
+	@Override
+	public String treeTypeTag() {
+		return "BST";
 	}
 }

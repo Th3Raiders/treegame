@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <typeInfoHistroy>
-    <typeInfo handle="=bt/src&lt;bt{StdBinaryTree.java[StdBinaryTree" modifiers="1" timestamp="1776690080782"/>
-    <typeInfo handle="=bt/src&lt;bt{BinaryTree.java[BinaryTree" modifiers="513" timestamp="1773785990432"/>
-    <typeInfo handle="=bt/src&lt;bt{StdValuedTree.java[StdValuedTree" modifiers="1" timestamp="1775033384824"/>
-    <typeInfo handle="=bt/src&lt;bst{BinarySearchTree.java[BinarySearchTree" modifiers="513" timestamp="1773572633914"/>
     <typeInfo handle="=binarytree/src&lt;tree{Tree.java[Tree" modifiers="513" timestamp="1783000626112"/>
     <typeInfo handle="=binarytree/src&lt;tree{StdTree.java[StdTree" modifiers="1" timestamp="1782918970237"/>
     <typeInfo handle="=binarytree/src&lt;node{ValuedNode.java[ValuedNode" modifiers="513" timestamp="1782998660107"/>
