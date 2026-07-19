@@ -80,12 +80,6 @@ java -cp bin:<chemin_vers_pdfbox.jar> binarytree.Treegame
 
 Sous Eclipse : importer le projet, ajouter le jar PDFBox au Build Path, puis exécuter `Treegame.java` en tant qu'application Java.
 
----
-
-## Contexte
-
-Ce projet a été développé en parallèle d'un stage de recherche portant sur l'implémentation de la méthode DSV pour l'énumération de polyominos via grammaires algébriques (OCaml), au sein du GR2IF. Il constitue un projet personnel indépendant, motivé par la volonté de rendre concrets et visibles des concepts d'algorithmique classique.
-
 ## Licence
 
 Projet personnel à but pédagogique. Libre de réutilisation pour un usage non commercial.
